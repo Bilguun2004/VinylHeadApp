@@ -1,0 +1,156 @@
+# VinylHeadApp — Cursor Rules
+
+You are a Senior Mobile Engineer working on an Expo (React Native) app.
+
+## Stack (authoritative)
+
+- Runtime: Expo SDK 54, React Native 0.81, React 19
+- Language: TypeScript (strict mode is ON in `tsconfig.json` — keep it on)
+- Styling: Tailwind via **NativeWind v4** (`className` prop, not `StyleSheet`). NativeWind v5 is still in preview; revisit once it ships stable.
+- Data layer: **Supabase** (`@supabase/supabase-js`) for auth, DB, storage, realtime
+- Server state: **TanStack Query** (`@tanstack/react-query`)
+- Icons: **lucide-react-native**
+- Navigation: Expo Router (preferred) or React Navigation if already wired
+
+Do not introduce alternative libraries that overlap with the above (no Axios for fetching, no styled-components, no react-native-vector-icons, no SWR, no Redux for server state, etc.) without an explicit request from the user.
+
+---
+
+## Hard Rules (non-negotiable)
+
+These are enforced rules. If a generation would violate one, refuse and rewrite.
+
+### 1. File & folder naming: kebab-case
+
+- All filenames use `kebab-case`: `user-profile.tsx`, `use-auth-session.ts`, `vinyl-card.tsx`.
+- Folders are kebab-case too: `components/`, `hooks/`, `lib/supabase/`, `features/record-collection/`.
+- The **exported React component** inside the file is still `PascalCase` (e.g. `export function UserProfile()` lives in `user-profile.tsx`).
+- Hooks: filename `use-*.ts` / `use-*.tsx`, export `useSomething`.
+- Route files for Expo Router follow Expo Router's conventions (`index.tsx`, `[id].tsx`, `_layout.tsx`) — those are allowed exceptions to kebab-case.
+
+### 2. Icons: lucide-react-native only
+
+- Import icons from `lucide-react-native`. Example: `import { Disc3, Search, Heart } from 'lucide-react-native';`
+- Do **not** use `@expo/vector-icons`, `react-native-vector-icons`, emoji-as-icon, or inline SVG when a Lucide icon exists.
+- Size and color via props (`size`, `color`, `strokeWidth`) or via NativeWind `className` (`className="text-foreground"`).
+
+### 3. Data fetching: TanStack Query for everything async
+
+- Every server interaction (Supabase reads, RPC calls, REST, GraphQL, etc.) goes through `useQuery`, `useInfiniteQuery`, `useMutation`, or `useSuspenseQuery`.
+- Do **not** call Supabase directly inside components with `useEffect` + `useState`. Wrap it in a query hook.
+- Co-locate query hooks under `features/<feature>/api/` or `hooks/queries/`, named `use-<thing>-query.ts` / `use-<thing>-mutation.ts`.
+- Always declare a stable `queryKey` as a tuple, e.g. `['vinyls', { userId }]`. Prefer a `queryKeys` factory per feature.
+- Mutations must invalidate or `setQueryData` for affected keys; never refetch by reloading the screen.
+- A single `QueryClient` lives in `lib/query-client.ts` and is provided once at the app root.
+
+### 4. Styling: NativeWind v5 + `design.md` tokens
+
+- Use `className` from NativeWind v5 for all styling. Avoid `StyleSheet.create` and inline `style={{ ... }}` unless animating a value that NativeWind cannot express.
+- **`design.md` is the single source of truth** for design tokens: colors, spacing, radii, typography, shadows, motion.
+  - Before adding any color, spacing value, font size, or radius, look it up in `design.md`.
+  - If a token is missing in `design.md`, stop and ask the user to add it there first — do **not** invent hex values, ad-hoc spacing, or one-off font sizes in components.
+  - Mirror `design.md` tokens into `tailwind.config.js` (under `theme.extend`) and reference them via semantic class names (`bg-background`, `text-foreground`, `rounded-card`, `p-4`).
+- No raw hex colors or magic numbers in JSX. If you see `#1a1a1a` or `marginTop: 13` in generated code, that's a bug — fix it to a token.
+
+### 5. No `any`, ever
+
+- TypeScript `any` is banned in app code. This includes:
+  - `as any`
+  - `: any`
+  - `Array<any>`, `Record<string, any>`
+  - implicit any from missing annotations on exported APIs
+- Prefer, in this order: a precise type → a generated Supabase type → `unknown` + a narrowing guard → a discriminated union.
+- For Supabase, generate types (`supabase gen types typescript`) into `lib/supabase/database.types.ts` and type the client as `SupabaseClient<Database>`.
+- For truly dynamic JSON, use `unknown` and validate with a schema (Zod) before use.
+- If a third-party library has weak types, write a typed wrapper in `lib/` rather than leaking `any` into features.
+
+---
+
+## Project conventions
+
+### Folder layout (target)
+
+```
+app/                      # Expo Router routes (if used)
+assets/
+components/               # Reusable, presentational components (kebab-case files)
+features/<feature>/
+  api/                    # TanStack Query hooks for this feature
+  components/
+  screens/
+  types.ts
+hooks/                    # Cross-feature hooks
+lib/
+  supabase/
+    client.ts
+    database.types.ts
+  query-client.ts
+  env.ts
+design.md                 # Design tokens — source of truth
+tailwind.config.js
+```
+
+### Components
+
+- Function components only. No class components.
+- Props: define an exported `type Props = { ... }` (or `interface`). No inline anonymous prop types longer than ~3 fields.
+- Keep components presentational; push data fetching into query hooks.
+- Accessibility: every pressable has `accessibilityRole` and a label; every icon-only button has `accessibilityLabel`.
+
+### Supabase
+
+- One client instance in `lib/supabase/client.ts`, typed as `SupabaseClient<Database>`.
+- Never read `process.env.SUPABASE_*` outside `lib/env.ts`. Validate env vars at startup.
+- Never put service-role keys in the app. Anon key only.
+- Always handle the `{ data, error }` shape; surface `error` to TanStack Query (throw it inside the `queryFn`/`mutationFn`) so React Query owns retry/error state.
+
+### TanStack Query patterns
+
+```ts
+// features/vinyls/api/use-vinyls-query.ts
+export const vinylKeys = {
+  all: ['vinyls'] as const,
+  list: (userId: string) => [...vinylKeys.all, 'list', { userId }] as const,
+  detail: (id: string) => [...vinylKeys.all, 'detail', { id }] as const,
+};
+
+export function useVinylsQuery(userId: string) {
+  return useQuery({
+    queryKey: vinylKeys.list(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vinyls')
+        .select('*')
+        .eq('owner_id', userId);
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+```
+
+### Error & loading states
+
+- Every screen that consumes a query must render explicit `isPending` and `isError` states. No silent spinners on top of stale data unless that's intentional.
+- Errors shown to users come from a localized message map, not raw `error.message`.
+
+### Imports
+
+- Absolute imports via `tsconfig.json` `paths` (e.g. `@/components/...`, `@/features/...`, `@/lib/...`). No `../../../..` chains.
+- Sort: React/RN → third-party → `@/*` → relative → styles/types.
+
+### Lint / format
+
+- ESLint + `@typescript-eslint` with `no-explicit-any: error` and `no-unsafe-*` enabled.
+- Prettier for formatting. 2-space indent. Single quotes. Trailing commas.
+
+---
+
+## When generating or editing code
+
+1. If creating a new file, choose a `kebab-case` name and place it in the correct folder per the layout above.
+2. If a styling decision is needed, open `design.md` first. If the token isn't there, ask before inventing one.
+3. If fetching data, write or extend a TanStack Query hook — never `useEffect` + `fetch`/`supabase` in a component.
+4. If you need an icon, import it from `lucide-react-native`.
+5. If you're tempted to write `any`, stop and produce a real type (or `unknown` + a guard).
+6. After changes, mentally check: kebab-case ✅, lucide icons ✅, TanStack Query ✅, NativeWind + design.md tokens ✅, zero `any` ✅. If any box is unchecked, revise before finishing.

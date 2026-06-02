@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "647167139156",
+    "project_id": "vinylhead-86ca5",
+    "storage_bucket": "vinylhead-86ca5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:647167139156:android:316e049211282b52ba7cc1",
+        "android_client_info": {
+          "package_name": "com.bilguun88.vinylheadapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAYRsGWiki5Dl9iKgAbuqBSgczk-D4JvI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
