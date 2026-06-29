@@ -9,12 +9,8 @@ export const CATALOG_CATEGORY_IDS = {
   accessories: '11111111-1111-1111-1111-111111111104',
 } as const;
 
-/** Home shop tabs: same IDs as seed rows, excluding accessories and other catalog-only categories. */
-export const HOME_NAV_CATEGORY_IDS: readonly string[] = [
-  CATALOG_CATEGORY_IDS.vinyl,
-  CATALOG_CATEGORY_IDS.turntables,
-  CATALOG_CATEGORY_IDS.speakers,
-];
+/** Virtual shop tab: discounted products (not a DB category row). */
+export const SALE_CATEGORY_ID = '__sale__';
 
 export type HomeCategoryTabId = keyof typeof CATALOG_CATEGORY_IDS;
 

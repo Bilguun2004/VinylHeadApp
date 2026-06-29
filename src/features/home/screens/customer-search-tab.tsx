@@ -76,15 +76,15 @@ export function CustomerSearchTab({
         onCartPress={onCartPress}
       />
 
-      <View className="mt-2 px-6 pb-3">
-        <View className="flex-row items-center rounded-full bg-vinyl-input px-4 py-3">
-          <Search size={16} color="#6B6B6B" />
+      <View className="mt-2 px-6 pb-3 pt-2">
+        <View className="flex-row items-center rounded-xl bg-[#F2F0EF] px-3.5 py-4">
+          <Search size={16} color="#757575" />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Пянз, тоглуулагч хайх..."
             placeholderTextColor="#A1A1A1"
-            className="ml-2 flex-1 text-base text-vinyl-black"
+            className="ml-2 flex-1 py-0 text-sm leading-5 text-vinyl-black"
             accessibilityLabel="Пянз, тоглуулагч хайх"
             autoCorrect={false}
             autoCapitalize="none"

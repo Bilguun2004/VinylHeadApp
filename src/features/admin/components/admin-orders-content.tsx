@@ -165,7 +165,7 @@ export function AdminOrdersContent() {
 
     <View className="px-5 pt-2">
 
-      <Text className="font-serif text-3xl text-vinyl-black">
+      <Text className="font-normal text-3xl text-vinyl-black">
 
         Захиалгын удирдлага
 
@@ -235,7 +235,7 @@ export function AdminOrdersContent() {
 
         <View className="mt-6 flex-row items-center justify-between">
 
-          <Text className="font-serif text-xl text-vinyl-black">
+          <Text className="font-normal text-xl text-vinyl-black">
 
             Шинэ захиалга
 

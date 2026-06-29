@@ -1,6 +1,7 @@
 import { Link, useRouter } from 'expo-router';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,7 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAppleSignInMutation } from '../api/use-apple-sign-in-mutation';
 import { useSignUpMutation } from '../api/use-sign-up-mutation';
+import { AppleSignInButton } from '../components/apple-sign-in-button';
+import { PrivacyPolicyLink } from '../../legal/components/privacy-policy-link';
+import { mapAppleAuthError } from '../lib/map-apple-auth-error';
 
 // Supabase enforces 6+ chars by default; mirror that locally so the
 // user gets feedback before we hit the network.
@@ -29,18 +34,32 @@ const MESSAGES = {
   passwordsDontMatch: 'Нууц үг таарахгүй байна.',
   alreadyRegistered:
     'Энэ имэйл аль хэдийн бүртгэгдсэн байна. Нэвтэрнэ үү.',
+  alreadyRegisteredPhone:
+    'Энэ утасны дугаар аль хэдийн бүртгэгдсэн байна.',
   rateLimited:
     'Хэт олон удаа оролдлоо. Хэсэг хүлээгээд дахин оролдоно уу.',
   network:
     'Сүлжээний алдаа. Интернэт холболтоо шалгаад дахин оролдоно уу.',
   generic: 'Алдаа гарлаа. Дахин оролдоно уу.',
+  appleFailed: 'Apple-ээр нэвтэрч чадсангүй. Дахин оролдоно уу.',
 };
 
 function mapSignUpError(err: unknown): string {
   if (!(err instanceof Error)) return MESSAGES.generic;
   const msg = err.message.toLowerCase();
-  if (msg.includes('already registered') || msg.includes('user already'))
+  if (
+    msg.includes('phone_number_already') ||
+    msg.includes('phone already registered')
+  ) {
+    return MESSAGES.alreadyRegisteredPhone;
+  }
+  if (
+    msg.includes('email_already') ||
+    msg.includes('already registered') ||
+    msg.includes('user already')
+  ) {
     return MESSAGES.alreadyRegistered;
+  }
   if (msg.includes('rate limit') || msg.includes('too many'))
     return MESSAGES.rateLimited;
   if (msg.includes('network') || msg.includes('fetch'))
@@ -62,8 +81,21 @@ export function SignUpScreen() {
   const [confirmationSent, setConfirmationSent] = useState(false);
 
   const signUpMutation = useSignUpMutation();
+  const appleMutation = useAppleSignInMutation();
+  const [showAppleButton, setShowAppleButton] = useState(false);
 
-  const isBusy = signUpMutation.isPending;
+  useEffect(() => {
+    void (async () => {
+      if (Platform.OS === 'ios') {
+        const appleAvailable = await AppleAuthentication.isAvailableAsync();
+        setShowAppleButton(appleAvailable);
+      } else {
+        setShowAppleButton(true);
+      }
+    })();
+  }, []);
+
+  const isBusy = signUpMutation.isPending || appleMutation.isPending;
   const canSubmit =
     username.trim().length > 0 &&
     phoneNumber.trim().length > 0 &&
@@ -75,12 +107,21 @@ export function SignUpScreen() {
   const errorText = useMemo(() => {
     if (localError) return localError;
     if (signUpMutation.error) return mapSignUpError(signUpMutation.error);
+    if (appleMutation.error) {
+      return mapAppleAuthError(appleMutation.error);
+    }
     return null;
-  }, [localError, signUpMutation.error]);
+  }, [localError, signUpMutation.error, appleMutation.error]);
 
   const clearErrors = () => {
     if (localError) setLocalError(null);
     if (signUpMutation.error) signUpMutation.reset();
+    if (appleMutation.error) appleMutation.reset();
+  };
+
+  const handleApple = () => {
+    if (isBusy) return;
+    appleMutation.mutate();
   };
 
   const handleSubmit = () => {
@@ -109,8 +150,6 @@ export function SignUpScreen() {
             setConfirmationSent(true);
             return;
           }
-          // TODO: replace with the authed home route once it lands.
-          router.replace('/home');
         },
       },
     );
@@ -351,6 +390,22 @@ export function SignUpScreen() {
             )}
           </Pressable>
 
+          {showAppleButton ? (
+            <>
+              <View className="my-6 flex-row items-center">
+                <View className="h-px flex-1 bg-[#E5E5E5]" />
+                <Text className="mx-3 text-xs text-vinyl-muted">эсвэл</Text>
+                <View className="h-px flex-1 bg-[#E5E5E5]" />
+              </View>
+              <AppleSignInButton
+                onPress={handleApple}
+                disabled={isBusy}
+                busy={appleMutation.isPending}
+                label="Apple-ээр үргэлжлүүлэх"
+              />
+            </>
+          ) : null}
+
           <View className="mt-8 flex-row items-center justify-center">
             <Text className="text-sm text-vinyl-muted">Бүртгэлтэй юу? </Text>
             <Link href="/" asChild>
@@ -361,6 +416,11 @@ export function SignUpScreen() {
               </Pressable>
             </Link>
           </View>
+
+          <PrivacyPolicyLink
+            helperText="Бүртгүүлснээр Нууцлалын бодлогыг хүлээн зөвшөөрнө"
+            className="mt-4 items-center py-2"
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

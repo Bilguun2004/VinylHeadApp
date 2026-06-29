@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { useAuthReady } from '../context/auth-ready-context';
+import { recoverStaleAuthSession } from '../lib/recover-stale-auth-session';
 
 export const authSessionKeys = {
   session: ['auth', 'session'] as const,
@@ -20,6 +21,7 @@ export function useAuthSessionQuery() {
     queryKey: authSessionKeys.session,
     queryFn: async () => {
       const { data, error } = await supabase.auth.getSession();
+      if (await recoverStaleAuthSession(error)) return null;
       if (error) throw error;
       return data.session;
     },

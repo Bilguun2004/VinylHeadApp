@@ -53,7 +53,7 @@ export function AdminChatThreadRow({
 
         <View className="ml-3 flex-1 justify-center pr-2">
           <Text
-            className="font-serif text-base font-bold leading-5 text-vinyl-black"
+            className="font-normal text-base font-bold leading-5 text-vinyl-black"
             numberOfLines={1}
           >
             {title}

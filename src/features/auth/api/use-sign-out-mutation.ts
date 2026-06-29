@@ -1,21 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { supabase } from '../../../lib/supabase';
+import { chatKeys } from '../../chat/api/chat-keys';
 import { authSessionKeys } from './use-auth-session-query';
-
-async function signOut(): Promise<void> {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-}
+import { signOutWithCleanup } from '../lib/sign-out';
 
 export function useSignOutMutation() {
   const qc = useQueryClient();
 
   return useMutation({
     mutationKey: ['auth', 'sign-out'],
-    mutationFn: signOut,
+    mutationFn: signOutWithCleanup,
     onSuccess: () => {
       qc.setQueryData(authSessionKeys.session, null);
+      void qc.removeQueries({ queryKey: chatKeys.all });
     },
   });
 }

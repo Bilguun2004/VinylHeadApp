@@ -35,7 +35,9 @@ export function CustomerHomeHeader({
         <Pressable
           onPress={onCartPress}
           accessibilityRole="button"
-          accessibilityLabel="Сагс"
+          accessibilityLabel={
+            cartCount > 0 ? `Сагс, ${cartCount} бараа` : 'Сагс'
+          }
           hitSlop={8}
           className="h-10 w-10 items-center justify-center"
         >

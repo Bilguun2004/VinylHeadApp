@@ -2,26 +2,13 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
 import { isRemotePushSupported } from '../../../lib/push-support';
-import { debugLog } from '../../../lib/debug-log';
 import { registerPushTokenForUser } from '../lib/register-push-token';
 
-async function registerWithLogging(userId: string, source: string): Promise<void> {
+async function registerSafely(userId: string): Promise<void> {
   try {
-    const token = await registerPushTokenForUser(userId);
-    await debugLog(
-      'use-push-registration.ts',
-      `${source} registration finished`,
-      { userId, ok: Boolean(token) },
-      'H3',
-    );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'unknown';
-    await debugLog(
-      'use-push-registration.ts',
-      `${source} registration error`,
-      { userId, error: message },
-      'H3',
-    );
+    await registerPushTokenForUser(userId);
+  } catch {
+    // Push registration is best-effort; failures must not break the app.
   }
 }
 
@@ -35,7 +22,7 @@ export function usePushRegistration(
 ): void {
   useEffect(() => {
     if (!enabled || !userId || !isRemotePushSupported()) return;
-    void registerWithLogging(userId, 'Initial');
+    void registerSafely(userId);
   }, [enabled, userId]);
 
   useEffect(() => {
@@ -43,7 +30,7 @@ export function usePushRegistration(
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void registerWithLogging(userId, 'Foreground');
+        void registerSafely(userId);
       }
     });
 

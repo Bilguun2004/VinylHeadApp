@@ -9,9 +9,10 @@ import { navigateToChatNotification } from '../home/lib/navigate-to-home-tab';
 import { useInAppNotification } from './in-app-notification-context';
 import { InAppNotificationBanner } from './in-app-notification-banner';
 
-type ChatNotificationData = {
+type InAppNotificationData = {
   type?: string;
   threadId?: string;
+  orderId?: string;
 };
 
 const RemoteNotificationListeners = lazy(
@@ -41,7 +42,14 @@ export function InAppNotificationHost() {
 
   if (!notification) return null;
 
-  const openFromData = (data: ChatNotificationData | undefined) => {
+  const openFromData = (data: InAppNotificationData | undefined) => {
+    if (data?.type === 'order' && data.orderId?.trim()) {
+      router.push({
+        pathname: '/admin/order/[id]',
+        params: { id: data.orderId.trim() },
+      });
+      return;
+    }
     if (data?.type !== 'chat') return;
     navigateToChatNotification(router, pathname, setPendingHomeTab, {
       isAdmin,
@@ -55,7 +63,7 @@ export function InAppNotificationHost() {
         notification={notification}
         onDismiss={dismissNotification}
         onPress={() => {
-          openFromData(notification.data as ChatNotificationData | undefined);
+          openFromData(notification.data as InAppNotificationData | undefined);
           dismissNotification();
         }}
       />

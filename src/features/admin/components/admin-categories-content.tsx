@@ -38,6 +38,8 @@ import {
   type SubCategoryRow,
 } from '../api/use-admin-sub-categories-query';
 
+const EMPTY_CATEGORY_TREE: AdminCategoryWithSubs[] = [];
+
 function categoryIconForName(name: string) {
   const n = name.toLowerCase();
   if (n.includes('пянз') && !n.includes('тоглуулагч')) return Disc3;
@@ -180,7 +182,7 @@ function CategoryAccordionCard({
           <Icon size={22} color="#0A0A0A" />
         </View>
         <View className="ml-3 flex-1">
-          <Text className="font-serif text-lg font-semibold text-vinyl-black">
+          <Text className="font-normal text-lg font-semibold text-vinyl-black">
             {category.name}
           </Text>
           <Text className="mt-0.5 text-xs text-vinyl-muted">{subLabel}</Text>
@@ -248,18 +250,27 @@ export function AdminCategoriesContent() {
     useState<AdminCategoryWithSubs | null>(null);
   const [renameSub, setRenameSub] = useState<SubCategoryRow | null>(null);
 
-  const categories = treeQuery.data ?? [];
-
   useEffect(() => {
     if (isDraggingRef.current || reorderMutation.isPending) return;
-    setOrderedCategories(categories);
-  }, [categories, reorderMutation.isPending]);
+    if (!treeQuery.data) return;
+
+    setOrderedCategories((prev) => {
+      const next = treeQuery.data;
+      if (
+        prev.length === next.length &&
+        prev.every((c, i) => c.id === next[i]?.id)
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [treeQuery.data, reorderMutation.isPending]);
 
   useEffect(() => {
-    if (didAutoExpandRef.current || categories.length === 0) return;
+    if (didAutoExpandRef.current || !treeQuery.data?.length) return;
     didAutoExpandRef.current = true;
-    setExpandedIds(new Set([categories[0].id]));
-  }, [categories]);
+    setExpandedIds(new Set([treeQuery.data[0].id]));
+  }, [treeQuery.data]);
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -332,12 +343,12 @@ export function AdminCategoriesContent() {
               'Алдаа',
               e instanceof Error ? e.message : 'Дарааллыг хадгалж чадсангүй',
             );
-            setOrderedCategories(categories);
+            setOrderedCategories(treeQuery.data ?? EMPTY_CATEGORY_TREE);
           },
         },
       );
     },
-    [orderedCategories, categories, reorderMutation],
+    [orderedCategories, treeQuery.data, reorderMutation],
   );
 
   const renderCategoryItem = useCallback(
@@ -367,7 +378,7 @@ export function AdminCategoriesContent() {
   return (
     <View className="flex-1 bg-vinyl-canvas">
       <View className="px-5 pt-2">
-        <Text className="font-serif text-3xl text-vinyl-black">
+        <Text className="font-normal text-3xl text-vinyl-black">
           Ангилал удирдлага
         </Text>
         <Text className="mt-1 text-sm text-vinyl-muted">

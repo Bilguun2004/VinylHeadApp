@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { SALE_CATEGORY_ID } from '../../../lib/catalog-seed-ids';
 import { supabase } from '../../../lib/supabase';
 import type { Tables } from '../../../types/supabase';
+
+export const SALE_CATEGORY_NAME = 'Хямдрал';
 
 export const categoryKeys = {
   all: ['categories'] as const,
@@ -52,16 +55,6 @@ async function fetchHomeNavCategories(): Promise<CategoryWithSubcategories[]> {
 
   if (error) throw error;
 
-  // #region agent log
-  fetch('http://127.0.0.1:7510/ingest/a1c0ba24-a96d-4e59-b6ea-bd3612f69b5f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'344e2f'},body:JSON.stringify({sessionId:'344e2f',runId:'pre-fix',hypothesisId:'H2',location:'src/features/products/api/use-categories-query.ts:fetchHomeNavCategories',message:'Fetched home nav categories',data:{count:(data??[]).length,firstIds:(data??[]).slice(0,4).map(r=>String(r.id)),seedLike:(data??[]).slice(0,4).some(r=>String(r.id).startsWith('11111111-1111'))},timestamp:Date.now()})}).catch(()=>{});
-  // eslint-disable-next-line no-console
-  console.log('[debug-344e2f][H2] categories', {
-    count: (data ?? []).length,
-    firstIds: (data ?? []).slice(0, 6).map((r) => String(r.id)),
-    seedLike: (data ?? []).some((r) => String(r.id).startsWith('11111111-1111')),
-  });
-  // #endregion
-
   return (data ?? []).map((row) => ({
     ...row,
     sub_categories: [...(row.sub_categories ?? [])].sort(
@@ -83,4 +76,22 @@ export function useHomeNavCategoriesQuery(options?: { enabled?: boolean }) {
     queryFn: fetchHomeNavCategories,
     enabled: options?.enabled ?? true,
   });
+}
+
+const SYNTHETIC_SALE_CATEGORY: CategoryWithSubcategories = {
+  id: SALE_CATEGORY_ID,
+  name: SALE_CATEGORY_NAME,
+  icon: null,
+  sort_order: Number.MAX_SAFE_INTEGER,
+  created_at: '1970-01-01T00:00:00.000Z',
+  updated_at: '1970-01-01T00:00:00.000Z',
+  sub_categories: [],
+};
+
+export function withSaleCategory(
+  categories: CategoryWithSubcategories[],
+  includeSale: boolean,
+): CategoryWithSubcategories[] {
+  if (!includeSale) return categories;
+  return [...categories, SYNTHETIC_SALE_CATEGORY];
 }

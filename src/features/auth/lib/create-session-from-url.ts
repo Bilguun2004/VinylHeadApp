@@ -6,14 +6,20 @@ function parseHashParams(url: string): URLSearchParams | null {
   return new URLSearchParams(url.slice(hashIndex + 1));
 }
 
-export async function createSessionFromUrl(url: string): Promise<boolean> {
+export type CreateSessionResult =
+  | { ok: true }
+  | { ok: false; error: string | null };
+
+export async function createSessionFromUrl(
+  url: string,
+): Promise<CreateSessionResult> {
   try {
     const parsed = new URL(url);
     const code = parsed.searchParams.get('code');
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) throw error;
-      return true;
+      return { ok: true };
     }
 
     const hashParams = parseHashParams(url);
@@ -25,11 +31,16 @@ export async function createSessionFromUrl(url: string): Promise<boolean> {
         refresh_token: refreshToken,
       });
       if (error) throw error;
-      return true;
+      return { ok: true };
     }
 
-    return false;
-  } catch {
-    return false;
+    // No recovery token in the URL: not necessarily an error (e.g. the screen
+    // was opened directly), so let the caller fall back to an existing session.
+    return { ok: false, error: null };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : null,
+    };
   }
 }

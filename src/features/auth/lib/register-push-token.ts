@@ -7,12 +7,11 @@ import {
   isExpectedPushTokenError,
   isRemotePushSupported,
 } from '../../../lib/push-support';
-import { debugLog } from '../../../lib/debug-log';
 import { supabase } from '../../../lib/supabase';
 
 export const PUSH_STATUS_KEY = 'vinylhead.push.status';
 
-/** Matches app.json extra.eas.projectId — fallback when Constants omit it in standalone builds. */
+/** Matches app.config.js extra.eas.projectId — fallback when Constants omit it in standalone builds. */
 const FALLBACK_EAS_PROJECT_ID = 'dc0a2988-a9c4-4aca-96b0-76997bac9adc';
 
 export type PushStatus = {
@@ -24,7 +23,8 @@ export type PushStatus = {
 
 let permissionAlertShown = false;
 
-export async function getPushStatus(): Promise<PushStatus | null> {  try {
+export async function getPushStatus(): Promise<PushStatus | null> {
+  try {
     const raw = await AsyncStorage.getItem(PUSH_STATUS_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PushStatus;
@@ -52,7 +52,7 @@ function resolveExpoProjectId(): { projectId: string; usedFallback: boolean } {
   return { projectId: FALLBACK_EAS_PROJECT_ID, usedFallback: true };
 }
 
-function showPermissionDeniedAlert(finalStatus: string): void {
+function showPermissionDeniedAlert(): void {
   if (permissionAlertShown) return;
   permissionAlertShown = true;
 
@@ -69,13 +69,69 @@ function showPermissionDeniedAlert(finalStatus: string): void {
       },
     ],
   );
+}
 
-  void debugLog(
-    'register-push-token.ts',
-    'Permission alert shown',
-    { finalStatus },
-    'H3',
-  );
+/** Reads the device Expo push token when permission is already granted. */
+export async function getDeviceExpoPushToken(): Promise<string | null> {
+  if (!Device.isDevice || !isRemotePushSupported()) return null;
+
+  const Notifications = await import('expo-notifications');
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return null;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#0A0A0A',
+    });
+  }
+
+  const { projectId } = resolveExpoProjectId();
+  try {
+    const tokenResponse = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+    const token = tokenResponse.data?.trim();
+    if (!token) return null;
+    return token;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown';
+    if (__DEV__ && !isExpectedPushTokenError(message)) {
+      console.warn('[push] getDeviceExpoPushToken failed:', message);
+    }
+    return null;
+  }
+}
+
+/** Removes this device's token from the signed-in user so another account won't receive their pushes. */
+export async function unregisterPushTokenForUser(userId: string): Promise<void> {
+  try {
+    if (!Device.isDevice || !isRemotePushSupported()) return;
+
+    const token = await getDeviceExpoPushToken();
+    // Without this device's token we cannot identify its row; deleting by
+    // user_id alone would wipe the user's OTHER devices' tokens too. Skip.
+    if (!token) return;
+
+    const { error } = await supabase
+      .from('expo_push_tokens')
+      .delete()
+      .eq('user_id', userId)
+      .eq('token', token);
+    if (error) {
+      if (__DEV__) console.warn('[push] unregister failed:', error.message);
+      return;
+    }
+
+    await setPushStatus({ ok: false, reason: 'signed_out', at: Date.now() });
+  } catch (err) {
+    if (__DEV__) {
+      const message = err instanceof Error ? err.message : 'unknown';
+      console.warn('[push] unregister error:', message);
+    }
+  }
 }
 
 export async function registerPushTokenForUser(
@@ -88,12 +144,6 @@ export async function registerPushTokenForUser(
         reason: 'not_physical_device',
         at: Date.now(),
       });
-      await debugLog(
-        'register-push-token.ts',
-        'Skipped: not a physical device',
-        { userId },
-        'H3',
-      );
       return null;
     }
 
@@ -103,12 +153,6 @@ export async function registerPushTokenForUser(
         reason: 'remote_push_unsupported',
         at: Date.now(),
       });
-      await debugLog(
-        'register-push-token.ts',
-        'Skipped: remote push not supported in this runtime',
-        { userId, appOwnership: Constants.appOwnership, platform: Platform.OS },
-        'H3',
-      );
       return null;
     }
 
@@ -130,66 +174,18 @@ export async function registerPushTokenForUser(
           ? 'permission_denied_permanent'
           : 'permission_denied';
       await setPushStatus({ ok: false, reason, at: Date.now() });
-      await debugLog(
-        'register-push-token.ts',
-        'Push permission not granted',
-        { userId, finalStatus, canAskAgain },
-        'H3',
-      );
-      showPermissionDeniedAlert(finalStatus);
+      showPermissionDeniedAlert();
       return null;
     }
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#0A0A0A',
-      });
-    }
-
-    const { projectId, usedFallback } = resolveExpoProjectId();
-    await debugLog(
-      'register-push-token.ts',
-      'Resolving Expo project id',
-      { userId, projectId, usedFallback },
-      'H3',
-    );
-
-    let token: string | undefined;
-    try {
-      const tokenResponse = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
-      token = tokenResponse.data?.trim();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown';
-      await setPushStatus({
-        ok: false,
-        reason: `token_error:${message.slice(0, 200)}`,
-        at: Date.now(),
-      });
-      await debugLog(
-        'register-push-token.ts',
-        'getExpoPushTokenAsync failed',
-        { userId, error: message, usedFallback },
-        'H3',
-      );
-      if (!isExpectedPushTokenError(message)) {
-        console.warn('[push] token registration failed:', message);
-      }
-      return null;
-    }
+    const token = await getDeviceExpoPushToken();
 
     if (!token) {
-      await setPushStatus({ ok: false, reason: 'token_empty', at: Date.now() });
-      await debugLog(
-        'register-push-token.ts',
-        'Expo push token empty',
-        { userId },
-        'H3',
-      );
+      await setPushStatus({
+        ok: false,
+        reason: 'token_empty',
+        at: Date.now(),
+      });
       return null;
     }
 
@@ -209,12 +205,6 @@ export async function registerPushTokenForUser(
         reason: `upsert:${error.message.slice(0, 80)}`,
         at: Date.now(),
       });
-      await debugLog(
-        'register-push-token.ts',
-        'Token upsert failed',
-        { userId, error: error.message },
-        'H3',
-      );
       throw error;
     }
 
@@ -223,18 +213,6 @@ export async function registerPushTokenForUser(
       prefix: token.slice(0, 28),
       at: Date.now(),
     });
-
-    await debugLog(
-      'register-push-token.ts',
-      'Push token registered',
-      {
-        userId,
-        tokenPrefix: token.slice(0, 24),
-        platform: Platform.OS,
-        usedFallback,
-      },
-      'H3',
-    );
 
     return token;
   } catch (err) {

@@ -14,6 +14,7 @@ export const productKeys = {
   list: (categoryId: string | null, subCategoryId: string | null = null) =>
     [...productKeys.all, 'list', { categoryId, subCategoryId }] as const,
   search: (term: string) => [...productKeys.all, 'search', { term }] as const,
+  sale: () => [...productKeys.all, 'sale'] as const,
   detail: (id: string) => [...productKeys.all, 'detail', { id }] as const,
 };
 
@@ -29,6 +30,7 @@ export const productWithCategorySelect = `
   image_url,
   specs,
   is_laser_printing_enabled,
+  is_featured,
   available,
   options_enabled,
   options_label,

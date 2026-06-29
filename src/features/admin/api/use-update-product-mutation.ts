@@ -25,6 +25,7 @@ export type UpdateProductInput = {
   giftWrapPrice: number;
   giftWrapDiscountPrice: number;
   isLaserPrintingEnabled: boolean;
+  isFeatured: boolean;
   available: boolean;
   optionsEnabled: boolean;
   optionsLabel: string;
@@ -117,6 +118,7 @@ export function useUpdateProductMutation() {
           image_url: imageUrl,
           specs,
           is_laser_printing_enabled: input.isLaserPrintingEnabled,
+          is_featured: input.isFeatured,
           available: input.available,
           ...optionsFields,
         })

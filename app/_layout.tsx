@@ -29,6 +29,7 @@ export default function RootLayout() {
                   <Stack.Screen name="sign-up" />
                   <Stack.Screen name="forgot-password" />
                   <Stack.Screen name="reset-password" />
+                  <Stack.Screen name="auth-callback" />
                   <Stack.Screen name="home" />
                   <Stack.Screen name="product/[id]" />
                   <Stack.Screen name="product/[id]/reviews" />

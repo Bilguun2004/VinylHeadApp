@@ -20,6 +20,7 @@ export type CreateOrderInput = {
   userId: string;
   lines: CartLineItem[];
   delivery: DeliveryFormValues;
+  paymentMethod: string;
 };
 
 function orderNumber(): string {
@@ -67,7 +68,7 @@ async function ensureProfile(
 export function useCreateOrderMutation() {
   return useMutation({
     mutationFn: async (input: CreateOrderInput) => {
-      const { userId, lines, delivery } = input;
+      const { userId, lines, delivery, paymentMethod } = input;
       if (lines.length === 0) {
         throw new Error('Сагс хоосон байна.');
       }
@@ -103,6 +104,7 @@ export function useCreateOrderMutation() {
           gift_wrap_total: giftWrapTotal,
           total_amount: totalAmount,
           delivery_info: deliveryInfo,
+          payment_method: paymentMethod,
         })
         .select('id')
         .single();
@@ -129,6 +131,13 @@ export function useCreateOrderMutation() {
 
         if (itemError) throw itemError;
       }
+
+      // Notify admins about the new confirmed order (best-effort).
+      await supabase.functions
+        .invoke('send-order-push', {
+          body: { orderId: order.id },
+        })
+        .catch(() => undefined);
 
       return order.id;
     },

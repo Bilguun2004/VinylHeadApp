@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -15,10 +16,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAppleSignInMutation } from '../api/use-apple-sign-in-mutation';
+import { useBiometricSignInMutation } from '../api/use-biometric-sign-in-mutation';
 import { useFacebookSignInMutation } from '../api/use-facebook-sign-in-mutation';
 import { useSignInMutation } from '../api/use-sign-in-mutation';
-import { DebugBootStrip } from '../components/debug-boot-strip';
+import { AppleSignInButton } from '../components/apple-sign-in-button';
+import { BiometricLoginIcon } from '../components/biometric-login-icon';
 import { FacebookLogo } from '../components/facebook-logo';
+import { PrivacyPolicyLink } from '../../legal/components/privacy-policy-link';
+import { mapAppleAuthError } from '../lib/map-apple-auth-error';
 import {
   canUseBiometricLogin,
   enableBiometricLogin,
@@ -26,7 +32,11 @@ import {
   getBiometricSupport,
   logBiometricDebugState,
   repairBiometricLoginState,
+  type BiometricKind,
 } from '../lib/biometric-auth';
+
+// Flip to true when biometric login is ready to ship.
+const BIOMETRIC_LOGIN_ENABLED = false;
 
 // TODO(i18n): move these strings into a shared message map once we wire
 // up i18n. Hard-coding Mongolian here matches the current login mockup.
@@ -39,6 +49,7 @@ const MESSAGES = {
   network:
     'Сүлжээний алдаа. Интернэт холболтоо шалгаад дахин оролдоно уу.',
   facebookFailed: 'Facebook-ээр нэвтэрч чадсангүй. Дахин оролдоно уу.',
+  appleFailed: 'Apple-ээр нэвтэрч чадсангүй. Дахин оролдоно уу.',
   generic: 'Алдаа гарлаа. Дахин оролдоно уу.',
 };
 
@@ -90,13 +101,37 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const signInMutation = useSignInMutation();
+  const appleMutation = useAppleSignInMutation();
   const facebookMutation = useFacebookSignInMutation();
+  const biometricMutation = useBiometricSignInMutation();
+  const [showAppleButton, setShowAppleButton] = useState(false);
+  const [showBiometricButton, setShowBiometricButton] = useState(false);
+  const [biometricKind, setBiometricKind] = useState<BiometricKind>('none');
+  const [biometricLabel, setBiometricLabel] = useState('');
 
   const refreshBiometricState = useCallback(async () => {
     await repairBiometricLoginState();
     const savedEmail = await getBiometricLoginEmail();
     if (savedEmail) {
       setEmail((current) => current || savedEmail);
+    }
+    if (Platform.OS === 'ios') {
+      const appleAvailable = await AppleAuthentication.isAvailableAsync();
+      setShowAppleButton(appleAvailable);
+    } else {
+      // Web and Android use the OAuth flow (browser redirect).
+      setShowAppleButton(true);
+    }
+    if (BIOMETRIC_LOGIN_ENABLED && Platform.OS !== 'web') {
+      const [canUse, support] = await Promise.all([
+        canUseBiometricLogin(),
+        getBiometricSupport(),
+      ]);
+      setShowBiometricButton(canUse);
+      setBiometricKind(support.kind);
+      setBiometricLabel(support.label);
+    } else {
+      setShowBiometricButton(false);
     }
     if (__DEV__) {
       await logBiometricDebugState();
@@ -113,40 +148,43 @@ export function LoginScreen() {
     }, [refreshBiometricState]),
   );
 
-  const isBusy = signInMutation.isPending || facebookMutation.isPending;
+  const isBusy =
+    signInMutation.isPending ||
+    appleMutation.isPending ||
+    facebookMutation.isPending ||
+    biometricMutation.isPending;
   const canSubmit =
     email.trim().length > 0 && password.length > 0 && !isBusy;
 
   const errorText = useMemo(() => {
     if (signInMutation.error) return mapAuthError(signInMutation.error);
+    if (appleMutation.error) {
+      return mapAppleAuthError(appleMutation.error);
+    }
     if (facebookMutation.error) return mapAuthError(facebookMutation.error);
     return null;
-  }, [signInMutation.error, facebookMutation.error]);
-
-  const goHome = () => {
-    router.replace('/home');
-  };
+  }, [signInMutation.error, appleMutation.error, facebookMutation.error]);
 
   const maybeOfferBiometric = async (session: Session, signedInEmail: string) => {
+    if (!BIOMETRIC_LOGIN_ENABLED) {
+      return;
+    }
     await repairBiometricLoginState();
     const support = await getBiometricSupport();
     if (!support.available) {
-      goHome();
       return;
     }
     const alreadyEnabled = await canUseBiometricLogin();
     if (alreadyEnabled) {
-      goHome();
       return;
     }
     promptEnableBiometric(
       session,
       signedInEmail,
       support.label,
-      goHome,
+      () => undefined,
       () => {
         void refreshBiometricState();
-        goHome();
       },
     );
   };
@@ -164,13 +202,32 @@ export function LoginScreen() {
     );
   };
 
+  const handleApple = () => {
+    if (isBusy) return;
+    appleMutation.mutate();
+  };
+
   const handleFacebook = () => {
     if (isBusy) return;
-    facebookMutation.mutate(undefined, {
-      onSuccess: (result) => {
-        if (result.status === 'success') {
-          router.replace('/home');
-        }
+    facebookMutation.mutate();
+  };
+
+  const handleBiometricSignIn = () => {
+    if (isBusy) return;
+    biometricMutation.mutate(undefined, {
+      onError: (err: unknown) => {
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Биометрикээр нэвтэрч чадсангүй. Дахин оролдоно уу.';
+        Alert.alert('Алдаа', message, [
+          {
+            text: 'OK',
+            onPress: () => {
+              void refreshBiometricState();
+            },
+          },
+        ]);
       },
     });
   };
@@ -272,31 +329,69 @@ export function LoginScreen() {
             </Text>
           ) : null}
 
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            accessibilityRole="button"
-            accessibilityLabel="Нэвтрэх"
-            accessibilityState={{
-              disabled: !canSubmit,
-              busy: signInMutation.isPending,
-            }}
-            className={`mb-6 h-14 flex-row items-center justify-center rounded-xl ${
-              canSubmit ? 'bg-vinyl-black' : 'bg-vinyl-black/50'
-            }`}
-          >
-            {signInMutation.isPending ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text className="text-base font-bold text-white">Нэвтрэх</Text>
-            )}
-          </Pressable>
+          <View className="mb-6 flex-row items-center gap-2">
+            <Pressable
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+              accessibilityRole="button"
+              accessibilityLabel="Нэвтрэх"
+              accessibilityState={{
+                disabled: !canSubmit,
+                busy: signInMutation.isPending,
+              }}
+              className={`h-14 flex-1 flex-row items-center justify-center rounded-xl ${
+                canSubmit ? 'bg-vinyl-black' : 'bg-vinyl-black/50'
+              }`}
+            >
+              {signInMutation.isPending ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text className="text-base font-bold text-white">Нэвтрэх</Text>
+              )}
+            </Pressable>
+
+            {showBiometricButton ? (
+              <Pressable
+                onPress={handleBiometricSignIn}
+                disabled={isBusy}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  biometricLabel
+                    ? `${biometricLabel}-ээр нэвтрэх`
+                    : 'Биометрикээр нэвтрэх'
+                }
+                accessibilityState={{
+                  disabled: isBusy,
+                  busy: biometricMutation.isPending,
+                }}
+                className={`h-14 w-14 items-center justify-center rounded-xl border border-[#E5E5E5] bg-white ${
+                  isBusy ? 'opacity-70' : ''
+                }`}
+              >
+                {biometricMutation.isPending ? (
+                  <ActivityIndicator color="#1A1A1A" />
+                ) : (
+                  <BiometricLoginIcon kind={biometricKind} size={22} color="#1A1A1A" />
+                )}
+              </Pressable>
+            ) : null}
+          </View>
 
           <View className="mb-6 flex-row items-center">
             <View className="h-px flex-1 bg-[#E5E5E5]" />
             <Text className="mx-3 text-xs text-[#757575]">эсвэл</Text>
             <View className="h-px flex-1 bg-[#E5E5E5]" />
           </View>
+
+          {showAppleButton ? (
+            <View className="mb-3">
+              <AppleSignInButton
+                onPress={handleApple}
+                disabled={isBusy}
+                busy={appleMutation.isPending}
+              />
+            </View>
+          ) : null}
 
           <Pressable
             onPress={handleFacebook}
@@ -307,7 +402,7 @@ export function LoginScreen() {
               disabled: isBusy,
               busy: facebookMutation.isPending,
             }}
-            className={`h-14 flex-row items-center justify-center rounded-xl border border-[#E5E5E5] bg-white ${
+            className={`h-16 flex-row items-center justify-center rounded-xl border border-[#E5E5E5] bg-white ${
               isBusy ? 'opacity-70' : ''
             }`}
           >
@@ -334,7 +429,7 @@ export function LoginScreen() {
             </Link>
           </View>
 
-          <DebugBootStrip />
+          <PrivacyPolicyLink className="mt-4 items-center py-2" />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

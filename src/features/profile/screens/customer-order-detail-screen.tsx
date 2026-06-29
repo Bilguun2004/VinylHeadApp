@@ -12,6 +12,8 @@ export function CustomerOrderDetailScreen() {
       readOnly
       orders={ordersQuery.data}
       isPending={ordersQuery.isPending || sessionQuery.isPending}
+      isError={ordersQuery.isError}
+      onRetry={() => void ordersQuery.refetch()}
     />
   );
 }

@@ -15,7 +15,6 @@ import {
   type BuildCartLineParams,
 } from '../lib/build-cart-line';
 import { loadCartFromStorage, saveCartToStorage } from '../lib/cart-storage';
-import { debugLog } from '../../../lib/debug-log';
 import type { PendingHomeTab } from '../../home/lib/navigate-to-home-tab';
 import type {
   CartGiftSelection,
@@ -68,46 +67,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    void saveCartToStorage(lines).catch((err) => {
-      // #region agent log
-      void debugLog(
-        'cart-context.tsx:saveCart',
-        'saveCartToStorage failed',
-        {
-          lineCount: lines.length,
-          error: err instanceof Error ? err.message : String(err),
-        },
-        'H-D',
-      );
-      // #endregion
+    void saveCartToStorage(lines).catch(() => {
+      // Persisting the cart is best-effort; ignore storage failures.
     });
   }, [lines, hydrated]);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    // #region agent log
-    void debugLog(
-      'cart-context.tsx:lines',
-      'cart lines changed',
-      {
-        lineCount: lines.length,
-        firstLineId: lines[0]?.lineId ?? null,
-        firstUnitPrice: lines[0]?.unitPrice ?? null,
-      },
-      'H-C',
-    );
-    // #endregion
-  }, [lines, hydrated]);
-
   const addItem = useCallback((params: AddToCartParams) => {
-    // #region agent log
-    void debugLog(
-      'cart-context.tsx:addItem',
-      'addItem called',
-      { productId: params.product.id, title: params.product.title },
-      'H-C',
-    );
-    // #endregion
     const gift = params.gift ?? null;
     const productOption = params.productOption ?? null;
     const laser = params.laser ?? null;

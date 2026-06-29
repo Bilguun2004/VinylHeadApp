@@ -217,7 +217,7 @@ export function AdminChatInboxScreen({
   return (
     <View className="flex-1 bg-vinyl-paper">
       <View className="px-6 pb-4 pt-2">
-        <Text className="font-serif text-[28px] font-bold text-vinyl-black">Мессеж</Text>
+        <Text className="font-normal text-[28px] font-bold text-vinyl-black">Мессеж</Text>
         <View className="mt-4">
           <AdminChatSearchField value={search} onChangeText={setSearch} />
           {!isSearching ? (

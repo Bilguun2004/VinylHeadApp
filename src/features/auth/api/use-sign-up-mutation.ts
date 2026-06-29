@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import type { Session, User } from '@supabase/supabase-js';
 
+import { checkSignupIdentityAvailable } from '../lib/check-signup-identity-available';
 import { supabase } from '../../../lib/supabase';
 
 export type SignUpArgs = {
@@ -26,8 +27,18 @@ async function signUpWithPassword({
 }: SignUpArgs): Promise<SignUpResult> {
   const displayName = username.trim();
   const phone = phoneNumber.trim();
+  const trimmedEmail = email.trim();
+
+  const availability = await checkSignupIdentityAvailable(trimmedEmail, phone);
+  if (availability.emailTaken) {
+    throw new Error('email_already_registered');
+  }
+  if (availability.phoneTaken) {
+    throw new Error('phone_number_already_registered');
+  }
+
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: trimmedEmail,
     password,
     options: {
       data: {

@@ -3,7 +3,6 @@ import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
-import { debugLog } from '../../lib/debug-log';
 import { useAuthSessionQuery } from '../auth/api/use-auth-session-query';
 import { useAuthReady } from '../auth/context/auth-ready-context';
 import { getActiveChatThreadId } from '../chat/lib/active-chat';
@@ -17,16 +16,40 @@ import {
   type InAppNotificationPayload,
 } from './in-app-notification-context';
 
-type ChatNotificationData = {
+type PushNotificationData = {
   type?: string;
   threadId?: string;
   messageId?: string;
   senderRole?: string;
   senderName?: string;
   senderAvatarUrl?: string;
+  recipientUserId?: string;
+  recipientRole?: string;
+  orderId?: string;
+  orderNumber?: string;
+  customerName?: string;
 };
 
-function shouldSuppressForThread(data: ChatNotificationData | undefined): boolean {
+function shouldShowPushNotificationForSession(
+  data: PushNotificationData | undefined,
+  userId: string | undefined,
+  isAdmin: boolean,
+): boolean {
+  if (!userId) return false;
+
+  if (data?.type === 'order') {
+    return isAdmin && data.recipientRole === 'admin';
+  }
+
+  if (data?.type !== 'chat') return true;
+
+  if (data.recipientRole === 'admin') return isAdmin;
+  if (data.recipientUserId) return data.recipientUserId === userId;
+
+  return true;
+}
+
+function shouldSuppressForThread(data: PushNotificationData | undefined): boolean {
   const isChat = data?.type === 'chat';
   return (
     isChat &&
@@ -39,10 +62,21 @@ function buildInAppPayload(
   notification: Notifications.Notification,
 ): InAppNotificationPayload {
   const content = notification.request.content;
-  const data = content.data as ChatNotificationData | undefined;
+  const data = content.data as PushNotificationData | undefined;
   const isChat = data?.type === 'chat';
+  const isOrder = data?.type === 'order';
   const pushTitle = content.title?.trim() || 'VinylHead';
   const body = content.body?.trim() || '';
+
+  if (isOrder) {
+    return {
+      id: notification.request.identifier,
+      username: pushTitle,
+      body,
+      appName: 'VinylHead',
+      data: data as Record<string, unknown> | undefined,
+    };
+  }
 
   if (isChat) {
     const username =
@@ -71,7 +105,7 @@ function buildInAppPayload(
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data as
-      | ChatNotificationData
+      | PushNotificationData
       | undefined;
     const show = !shouldSuppressForThread(data);
     const isForeground = AppState.currentState === 'active';
@@ -100,10 +134,25 @@ export default function RemoteNotificationListeners() {
   pathnameRef.current = pathname;
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
+  const userId = sessionQuery.data?.user.id;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
   const { showNotification, dismissNotification } = useInAppNotification();
 
+  useEffect(() => {
+    if (!userId) dismissNotification();
+  }, [dismissNotification, userId]);
+
   const openFromData = useCallback(
-    (data: ChatNotificationData | undefined) => {
+    (data: PushNotificationData | undefined) => {
+      if (data?.type === 'order' && data.orderId?.trim()) {
+        router.push({
+          pathname: '/admin/order/[id]',
+          params: { id: data.orderId.trim() },
+        });
+        return;
+      }
+
       if (data?.type !== 'chat') return;
       navigateToChatNotification(
         router,
@@ -131,22 +180,20 @@ export default function RemoteNotificationListeners() {
     const receivedSub = Notifications.addNotificationReceivedListener(
       (incoming) => {
         const data = incoming.request.content.data as
-          | ChatNotificationData
+          | PushNotificationData
           | undefined;
-
-        void debugLog(
-          'remote-notification-listeners.tsx',
-          'Notification received on device',
-          {
-            title: incoming.request.content.title ?? null,
-            type: data?.type ?? null,
-            foreground: AppState.currentState === 'active',
-          },
-          'H6',
-        );
 
         if (shouldSuppressForThread(data)) return;
         if (AppState.currentState !== 'active') return;
+        if (
+          !shouldShowPushNotificationForSession(
+            data,
+            userIdRef.current,
+            isAdminRef.current,
+          )
+        ) {
+          return;
+        }
 
         showNotification(buildInAppPayload(incoming));
       },
@@ -155,11 +202,19 @@ export default function RemoteNotificationListeners() {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         dismissNotification();
-        openFromData(
-          response.notification.request.content.data as
-            | ChatNotificationData
-            | undefined,
-        );
+        const data = response.notification.request.content.data as
+          | PushNotificationData
+          | undefined;
+        if (
+          !shouldShowPushNotificationForSession(
+            data,
+            userIdRef.current,
+            isAdminRef.current,
+          )
+        ) {
+          return;
+        }
+        openFromData(data);
       },
     );
 
@@ -175,16 +230,41 @@ export default function RemoteNotificationListeners() {
 
     void Notifications.getLastNotificationResponseAsync().then((response) => {
       const data = response?.notification.request.content.data as
-        | ChatNotificationData
+        | PushNotificationData
         | undefined;
-      if (data?.type === 'chat') {
-        openChatFromColdStartNotification(router, setPendingHomeTab, {
+      if (
+        !shouldShowPushNotificationForSession(
+          data,
+          sessionQuery.data?.user.id,
           isAdmin,
-          threadId: data.threadId,
-        });
+        )
+      ) {
+        return;
       }
+
+      if (data?.type === 'order' && data.orderId?.trim()) {
+        router.replace({
+          pathname: '/admin/order/[id]',
+          params: { id: data.orderId.trim() },
+        });
+        return;
+      }
+
+      if (data?.type !== 'chat') return;
+
+      openChatFromColdStartNotification(router, setPendingHomeTab, {
+        isAdmin,
+        threadId: data.threadId,
+      });
     });
-  }, [authReady, isAdmin, router, sessionQuery.isSuccess, setPendingHomeTab]);
+  }, [
+    authReady,
+    isAdmin,
+    router,
+    sessionQuery.data?.user.id,
+    sessionQuery.isSuccess,
+    setPendingHomeTab,
+  ]);
 
   return null;
 }

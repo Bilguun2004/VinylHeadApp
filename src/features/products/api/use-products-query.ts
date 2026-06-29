@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '../../../lib/supabase';
+import { partitionSaleProducts } from '../lib/product-sale';
 import {
   productKeys,
   productWithCategorySelect,
@@ -14,9 +15,8 @@ async function fetchProductsByCategory(
   let q = supabase
     .from('products')
     .select(productWithCategorySelect)
-    .order('created_at', {
-      ascending: false,
-    });
+    .order('is_featured', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (categoryId) {
     q = q.eq('category_id', categoryId);
@@ -28,19 +28,27 @@ async function fetchProductsByCategory(
   const { data, error } = await q;
   if (error) throw error;
 
-  // #region agent log
-  fetch('http://127.0.0.1:7510/ingest/a1c0ba24-a96d-4e59-b6ea-bd3612f69b5f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'344e2f'},body:JSON.stringify({sessionId:'344e2f',runId:'pre-fix',hypothesisId:'H3',location:'src/features/products/api/use-products-query.ts:fetchProductsByCategory',message:'Fetched products',data:{categoryId,subCategoryId,count:(data??[]).length,firstIds:(data??[]).slice(0,4).map(r=>String(r.id)),seedLike:(data??[]).slice(0,4).some(r=>String(r.id).startsWith('22222222-2222'))},timestamp:Date.now()})}).catch(()=>{});
-  // eslint-disable-next-line no-console
-  console.log('[debug-344e2f][H3] products', {
-    categoryId,
-    subCategoryId,
-    count: (data ?? []).length,
-    firstIds: (data ?? []).slice(0, 6).map((r) => String(r.id)),
-    seedLike: (data ?? []).some((r) => String(r.id).startsWith('22222222-2222')),
-  });
-  // #endregion
-
   return (data ?? []) as ProductWithCategory[];
+}
+
+export type SaleProductsQueryData = {
+  products: ProductWithCategory[];
+  showTab: boolean;
+};
+
+async function fetchSaleProducts(): Promise<SaleProductsQueryData> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(productWithCategorySelect)
+    .order('is_featured', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  const rows = (data ?? []) as ProductWithCategory[];
+  const { products, showTab } = partitionSaleProducts(rows);
+
+  return { products, showTab };
 }
 
 export function useProductsQuery(
@@ -52,5 +60,15 @@ export function useProductsQuery(
     queryKey: productKeys.list(categoryId, subCategoryId),
     queryFn: () => fetchProductsByCategory(categoryId, subCategoryId),
     enabled: options?.enabled ?? true,
+  });
+}
+
+export function useSaleProductsQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: productKeys.sale(),
+    queryFn: fetchSaleProducts,
+    enabled: options?.enabled ?? true,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }

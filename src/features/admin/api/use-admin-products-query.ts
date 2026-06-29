@@ -25,7 +25,13 @@ async function fetchAdminProducts(search: string): Promise<ProductWithCategory[]
   }
 
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.error('[admin-products] fetch failed', error.message, error.code);
+    }
+    throw error;
+  }
   return (data ?? []) as ProductWithCategory[];
 }
 

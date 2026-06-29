@@ -129,13 +129,13 @@ export function ProductGiftWrapCard({
                       className="mb-2 mr-4 items-center"
                     >
                       <View
-                        className={`h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
+                        className={`h-14 w-14 items-center justify-center overflow-hidden rounded-full ${
                           active ? 'border-2 border-vinyl-black' : 'border border-vinyl-divider'
                         }`}
                       >
                         <Image
                           source={{ uri }}
-                          className="h-8 w-8 rounded-full"
+                          className="h-12 w-12 rounded-full"
                           resizeMode="cover"
                           accessibilityIgnoresInvertColors
                         />

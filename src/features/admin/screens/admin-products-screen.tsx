@@ -21,33 +21,13 @@ import {
 
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-
-  ActivityIndicator,
-
-  Alert,
-
-  FlatList,
-
-  Pressable,
-
-  Text,
-
-  View,
-
-  useWindowDimensions,
-
-} from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
-import { ProductCard } from '../../products/components/product-card';
-
-import { useHomeNavCategoriesQuery } from '../../products/api/use-categories-query';
-
-import { useProductsQuery } from '../../products/api/use-products-query';
+import { CustomerShopCatalog } from '../../products/components/customer-shop-catalog';
 
 import type { ProductWithCategory } from '../../products/api/use-product-query';
 
@@ -64,7 +44,7 @@ import { AdminOrdersContent } from '../components/admin-orders-content';
 import { AdminChatInboxScreen } from '../../chat/screens/admin-chat-inbox-screen';
 import { useAdminChatThreadsQuery } from '../../chat/api/use-admin-chat-threads-query';
 import { chatKeys } from '../../chat/api/chat-keys';
-import { supabase } from '../../../lib/supabase';
+import { usePostgresChannel } from '../../chat/hooks/use-postgres-channel';
 
 type AdminTab =
   | 'products'
@@ -82,15 +62,11 @@ export function AdminProductsScreen() {
 
   const insets = useSafeAreaInsets();
 
-  const { width: screenWidth } = useWindowDimensions();
-
   const deleteMutation = useDeleteProductMutation();
 
 
 
   const [activeTab, setActiveTab] = useState<AdminTab>('products');
-
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.tab === 'chat' || params.tab === 'chats') {
@@ -100,7 +76,6 @@ export function AdminProductsScreen() {
 
 
 
-  const navCategoriesQuery = useHomeNavCategoriesQuery();
   const threadsQuery = useAdminChatThreadsQuery({ enabled: true });
 
   const chatHasUnread = useMemo(() => {
@@ -114,42 +89,19 @@ export function AdminProductsScreen() {
     return false;
   }, [threadsQuery.data]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin-chat-badge')
-      .on(
+  usePostgresChannel({
+    enabled: true,
+    channelKey: 'admin-chat-badge',
+    setup: (channel) => {
+      channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_threads' },
         () => {
           void qc.invalidateQueries({ queryKey: chatKeys.adminThreads('') });
         },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [qc]);
-
-  const productsQuery = useProductsQuery(activeCategoryId, null, {
-    enabled: activeTab === 'products' && activeCategoryId != null,
+      );
+    },
   });
-
-
-
-  const horizontalPadding = 24;
-
-  const gutter = 16;
-
-  const cardWidth = useMemo(() => {
-
-    const contentWidth = screenWidth - horizontalPadding * 2;
-
-    return (contentWidth - gutter) / 2;
-
-  }, [screenWidth]);
-
-
 
   const tabLabels = useMemo(
 
@@ -174,24 +126,6 @@ export function AdminProductsScreen() {
     [],
 
   );
-
-
-
-  useEffect(() => {
-
-    const rows = navCategoriesQuery.data;
-
-    if (!rows?.length) return;
-
-    setActiveCategoryId((current) => {
-
-      if (current && rows.some((c) => c.id === current)) return current;
-
-      return rows[0].id;
-
-    });
-
-  }, [navCategoriesQuery.data]);
 
 
 
@@ -245,7 +179,16 @@ export function AdminProductsScreen() {
 
                   style: 'destructive',
 
-                  onPress: () => deleteMutation.mutate(product.id),
+                  onPress: () =>
+                    deleteMutation.mutate(product.id, {
+                      onError: (err) =>
+                        Alert.alert(
+                          'Устгаж чадсангүй',
+                          err instanceof Error
+                            ? err.message
+                            : 'Бүтээгдэхүүнийг устгахад алдаа гарлаа. Дахин оролдоно уу.',
+                        ),
+                    }),
 
                 },
 
@@ -269,231 +212,19 @@ export function AdminProductsScreen() {
 
 
 
-  const productsContent = () => {
-
-    if (navCategoriesQuery.isPending) {
-
-      return (
-
-        <View className="flex-1 items-center justify-center">
-
-          <ActivityIndicator />
-
-        </View>
-
-      );
-
-    }
-
-
-
-    if (navCategoriesQuery.isError) {
-
-      return (
-
-        <View className="flex-1 items-center justify-center px-6">
-
-          <Text className="text-center text-base font-semibold text-vinyl-black">
-
-            Ангиллуудыг ачаалж чадсангүй
-
-          </Text>
-
-          <Text className="mt-2 text-center text-sm text-vinyl-muted">
-
-            Supabase болон сүлжээний тохиргоогоо шалгана уу.
-
-          </Text>
-
-        </View>
-
-      );
-
-    }
-
-
-
-    return (
-
-      <>
-
-        <View className="px-6">
-
-          <FlatList
-
-            data={navCategoriesQuery.data ?? []}
-
-            keyExtractor={(c) => c.id}
-
-            horizontal
-
-            showsHorizontalScrollIndicator={false}
-
-            contentContainerStyle={{ paddingTop: 10, paddingBottom: 14 }}
-
-            ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
-
-            renderItem={({ item }) => {
-
-              const isActive = item.id === activeCategoryId;
-
-              return (
-
-                <Pressable
-
-                  onPress={() => setActiveCategoryId(item.id)}
-
-                  accessibilityRole="tab"
-
-                  accessibilityState={{ selected: isActive }}
-
-                  accessibilityLabel={item.name}
-
-                  className={`rounded-full px-4 py-2 ${
-
-                    isActive ? 'bg-vinyl-black' : 'bg-vinyl-paper'
-
-                  }`}
-
-                >
-
-                  <Text
-
-                    className={`text-sm font-semibold ${
-
-                      isActive ? 'text-vinyl-paper' : 'text-vinyl-muted'
-
-                    }`}
-
-                  >
-
-                    {item.name}
-
-                  </Text>
-
-                </Pressable>
-
-              );
-
-            }}
-
-          />
-
-        </View>
-
-
-
-        {activeCategoryId == null ? (
-
-          <View className="flex-1 items-center justify-center px-6">
-
-            <Text className="text-center text-sm text-vinyl-muted">
-
-              Ангилал алга байна.
-
-            </Text>
-
-          </View>
-
-        ) : productsQuery.isPending ? (
-
-          <View className="flex-1 items-center justify-center">
-
-            <ActivityIndicator />
-
-          </View>
-
-        ) : productsQuery.isError ? (
-
-          <View className="flex-1 items-center justify-center px-6">
-
-            <Text className="text-center text-base font-semibold text-vinyl-black">
-
-              Ачаалж чадсангүй
-
-            </Text>
-
-            <Text className="mt-2 text-center text-sm text-vinyl-muted">
-
-              Сүлжээ болон Supabase тохиргоогоо шалгана уу.
-
-            </Text>
-
-          </View>
-
-        ) : (
-
-          <FlatList
-
-            data={productsQuery.data ?? []}
-
-            keyExtractor={(p) => p.id}
-
-            numColumns={2}
-
-            columnWrapperStyle={{
-
-              paddingHorizontal: horizontalPadding,
-
-              justifyContent: 'space-between',
-
-            }}
-
-            contentContainerStyle={{ paddingBottom: 16 }}
-
-            ItemSeparatorComponent={() => <View style={{ height: gutter }} />}
-
-            showsVerticalScrollIndicator={false}
-
-            ListEmptyComponent={
-
-              <View className="px-6 pt-10">
-
-                <Text className="text-center text-sm text-vinyl-muted">
-
-                  Бараа олдсонгүй.
-
-                </Text>
-
-              </View>
-
-            }
-
-            renderItem={({ item }) => (
-
-              <ProductCard
-
-                product={item}
-
-                width={cardWidth}
-
-                onPress={(id) =>
-
-                  router.push({
-
-                    pathname: '/admin/add-product',
-
-                    params: { id },
-
-                  })
-
-                }
-
-                onLongPress={onOpenMenu}
-
-              />
-
-            )}
-
-          />
-
-        )}
-
-      </>
-
-    );
-
-  };
+  const productsContent = () => (
+    <CustomerShopCatalog
+      enabled={activeTab === 'products'}
+      onProductPress={(id) =>
+        router.push({
+          pathname: '/admin/add-product',
+          params: { id },
+        })
+      }
+      onProductLongPress={onOpenMenu}
+      showAvailability
+    />
+  );
 
 
 

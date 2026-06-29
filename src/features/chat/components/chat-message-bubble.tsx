@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Download, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Platform, Pressable, Text, View } from 'react-native';
 
 import { ProfileAvatar } from '../../profile/components/profile-avatar';
 import type { ChatMessageRow } from '../api/use-chat-messages-query';
@@ -89,11 +89,11 @@ export function ChatMessageBubble({
       return;
     }
 
-    if (!FileSystem.cacheDirectory) {
-      throw new Error('Татаж авах боломжгүй.');
-    }
-
     try {
+      if (!FileSystem.cacheDirectory) {
+        throw new Error('Татаж авах боломжгүй.');
+      }
+
       setIsDownloading(true);
       const filename = `chat-image-${message.id}.${imageExt}`;
       const dest = `${FileSystem.cacheDirectory}${filename}`;
@@ -117,6 +117,11 @@ export function ChatMessageBubble({
         dialogTitle: 'Чатын зураг',
         UTI: 'public.image',
       });
+    } catch (err) {
+      Alert.alert(
+        'Алдаа',
+        err instanceof Error ? err.message : 'Зураг татахад алдаа гарлаа.',
+      );
     } finally {
       setIsDownloading(false);
     }

@@ -26,17 +26,6 @@ if (!supabaseKey) {
 // when persisting a full Supabase session (JWT + user metadata).
 const isWeb = Platform.OS === 'web';
 
-// #region agent log
-void import('./debug-log').then(({ debugLog }) =>
-  debugLog(
-    'supabase.ts:init',
-    'Supabase client init',
-    { storage: isWeb ? 'default' : 'AsyncStorage', platform: Platform.OS },
-    'H1',
-  ),
-);
-// #endregion
-
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     storage: isWeb ? undefined : SupabaseAuthStorage,
@@ -46,9 +35,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     // code_verifier on signInWithOAuth() and consumes it via
     // exchangeCodeForSession() once the provider redirects back.
     flowType: 'pkce',
-    // We never auto-detect from window.location on native; the OAuth
-    // callback URL is handed back to us by WebBrowser.openAuthSessionAsync.
-    detectSessionInUrl: false,
+    // Web OAuth completes via /auth-callback; native hands the URL to
+    // WebBrowser.openAuthSessionAsync and exchangeCodeForSession instead.
+    detectSessionInUrl: isWeb,
   },
 });
 

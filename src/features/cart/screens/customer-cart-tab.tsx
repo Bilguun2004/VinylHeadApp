@@ -25,8 +25,6 @@ import {
 import { useCart } from '../context/cart-context';
 import { cartSubtotal } from '../lib/cart-pricing';
 import { DELIVERY_CITIES, districtsForCity } from '../lib/mongolia-locations';
-import { debugLog } from '../../../lib/debug-log';
-
 const EMPTY_DELIVERY: DeliveryFormValues = {
   fullName: '',
   phone: '',
@@ -70,21 +68,6 @@ type CustomerCartTabProps = {
 export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
   const { lines, hydrated, clearCart, removeLine, setLineQuantity } = useCart();
 
-  useEffect(() => {
-    // #region agent log
-    void debugLog(
-      'customer-cart-tab.tsx:mount',
-      'CustomerCartTab render state',
-      {
-        hydrated,
-        lineCount: lines.length,
-        subtotal: cartSubtotal(lines),
-        firstLineTitle: lines[0]?.title ?? null,
-      },
-      'H-B',
-    );
-    // #endregion
-  }, [hydrated, lines]);
   const sessionQuery = useAuthSessionQuery();
   const userId = sessionQuery.data?.user.id;
   const profileQuery = useProfileQuery(userId);
@@ -124,7 +107,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
     }
 
     createOrderMutation.mutate(
-      { userId, lines, delivery },
+      { userId, lines, delivery, paymentMethod },
       {
         onSuccess: () => {
           clearCart();

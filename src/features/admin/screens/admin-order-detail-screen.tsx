@@ -8,6 +8,8 @@ export function AdminOrderDetailScreen() {
       readOnly={false}
       orders={ordersQuery.data}
       isPending={ordersQuery.isPending}
+      isError={ordersQuery.isError}
+      onRetry={() => void ordersQuery.refetch()}
     />
   );
 }

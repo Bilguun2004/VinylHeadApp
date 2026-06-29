@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useUpdatePasswordMutation } from '../api/use-update-password-mutation';
 import { createSessionFromUrl } from '../lib/create-session-from-url';
+import { signOutWithCleanup } from '../lib/sign-out';
 import { supabase } from '../../../lib/supabase';
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -67,12 +68,17 @@ export function ResetPasswordScreen() {
     let mounted = true;
 
     const establishRecoverySession = async (url: string | null) => {
+      let linkErrorMessage: string | null = null;
+
       if (url) {
         const created = await createSessionFromUrl(url);
-        if (created && mounted) {
+        if (created.ok && mounted) {
           setLinkReady(true);
           setLinkError(null);
           return;
+        }
+        if (!created.ok) {
+          linkErrorMessage = created.error;
         }
       }
 
@@ -85,7 +91,7 @@ export function ResetPasswordScreen() {
         return;
       }
 
-      setLinkError(MESSAGES.invalidLink);
+      setLinkError(linkErrorMessage ?? MESSAGES.invalidLink);
     };
 
     void Linking.getInitialURL().then((url) => {
@@ -124,7 +130,7 @@ export function ResetPasswordScreen() {
       { password },
       {
         onSuccess: async () => {
-          await supabase.auth.signOut();
+          await signOutWithCleanup();
           setPasswordUpdated(true);
         },
       },

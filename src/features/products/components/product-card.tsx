@@ -1,6 +1,17 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { memo } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 import type { ProductWithCategory } from '../api/use-product-query';
+import {
+  isOnSale,
+  isProductAvailable,
+} from '../lib/product-sale';
+
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1560507074-b9eb43a0c9a4?auto=format&fit=crop&w=1200&q=80';
+
+export { isOnSale, isProductAvailable } from '../lib/product-sale';
 
 export function formatMnt(amount: number) {
   return `₮${Math.round(amount).toLocaleString('en-US')}`;
@@ -12,17 +23,6 @@ export function productSubtitle(product: ProductWithCategory) {
   return cat || product.artist || '';
 }
 
-export function isOnSale(product: ProductWithCategory) {
-  const list = Number(product.price);
-  const discount =
-    product.discount_price != null ? Number(product.discount_price) : null;
-  return discount != null && !Number.isNaN(discount) && discount < list;
-}
-
-export function isProductAvailable(product: ProductWithCategory) {
-  return product.available !== false;
-}
-
 type ProductCardProps = {
   product: ProductWithCategory;
   width: number;
@@ -31,7 +31,7 @@ type ProductCardProps = {
   showAvailability?: boolean;
 };
 
-export function ProductCard({
+function ProductCardComponent({
   product,
   width,
   onPress,
@@ -59,13 +59,11 @@ export function ProductCard({
     >
       <View className="relative">
         <Image
-          source={{
-            uri:
-              imageUri ||
-              'https://images.unsplash.com/photo-1560507074-b9eb43a0c9a4?auto=format&fit=crop&w=1200&q=80',
-          }}
+          source={{ uri: imageUri || FALLBACK_IMAGE }}
           style={{ width: '100%', height: width }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
           accessibilityLabel={product.title}
         />
         {showAvailability && !available ? (
@@ -111,3 +109,5 @@ export function ProductCard({
     </Pressable>
   );
 }
+
+export const ProductCard = memo(ProductCardComponent);

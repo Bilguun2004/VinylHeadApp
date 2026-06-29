@@ -7,6 +7,7 @@ import {
   Image,
   Pressable,
   ScrollView,
+  Share,
   Text,
   View,
 } from 'react-native';
@@ -40,7 +41,6 @@ import {
 } from '../components/product-laser-print-card';
 import { ProductReviewsSection } from '../../reviews/components/product-reviews-section';
 import type { Json } from '../../../types/supabase';
-import { debugLog } from '../../../lib/debug-log';
 import { navigateToHomeTab } from '../../home/lib/navigate-to-home-tab';
 
 const FALLBACK_IMAGE =
@@ -269,19 +269,6 @@ export function ProductScreen() {
   };
 
   const handleAddToCart = () => {
-    // #region agent log
-    void debugLog(
-      'product-screen.tsx:handleAddToCart',
-      'add-to-cart pressed',
-      {
-        productId,
-        productAvailable,
-        isEditingCartLine,
-        optionId: optionSelection.optionId,
-      },
-      'H-A',
-    );
-    // #endregion
     if (!productAvailable) return;
 
     if (productOptionsConfig?.enabled) {
@@ -306,18 +293,6 @@ export function ProductScreen() {
     } else {
       addItem(payload);
     }
-
-    // #region agent log
-    void debugLog(
-      'product-screen.tsx:handleAddToCart',
-      'cart updated, navigating to cart tab',
-      {
-        productId: payload.product.id,
-        canGoBack: router.canGoBack(),
-      },
-      'H-A',
-    );
-    // #endregion
 
     navigateToHomeTab(router, pathname, setPendingHomeTab, 'cart');
   };
@@ -360,8 +335,14 @@ export function ProductScreen() {
 
             <Pressable
               onPress={() => {
-                // TODO: wire share sheet when product URL is available.
+                if (!product) return;
+                const deepLink = `vinylhead://product/${product.id}`;
+                void Share.share({
+                  title: product.title,
+                  message: `${product.title}\n${deepLink}`,
+                }).catch(() => undefined);
               }}
+              disabled={!product}
               accessibilityRole="button"
               accessibilityLabel="Хуваалцах"
               hitSlop={8}

@@ -41,7 +41,7 @@ function AdminGiftOptionCard({ item, onToggle }: GiftCardProps) {
         accessibilityLabel={item.name}
       />
       <Text
-        className="mt-3 font-serif text-base font-semibold text-vinyl-black"
+        className="mt-3 font-normal text-base font-semibold text-vinyl-black"
         numberOfLines={2}
       >
         {item.name}
@@ -196,7 +196,7 @@ export function AdminGiftsContent() {
 
   const listHeader = (
     <View className="px-5 pt-2">
-      <Text className="font-serif text-3xl text-vinyl-black">
+      <Text className="font-normal text-3xl text-vinyl-black">
         Бэлгийн боодлын удирдлага
       </Text>
       <Text className="mt-1 text-sm text-vinyl-muted">

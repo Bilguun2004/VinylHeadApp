@@ -214,12 +214,16 @@ type OrderDetailScreenProps = {
   readOnly: boolean;
   orders: AdminOrderWithDetails[] | undefined;
   isPending: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 };
 
 export function OrderDetailScreen({
   readOnly,
   orders,
   isPending,
+  isError = false,
+  onRetry,
 }: OrderDetailScreenProps) {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -282,6 +286,23 @@ export function OrderDetailScreen({
         {isPending ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator />
+          </View>
+        ) : isError ? (
+          <View className="flex-1 items-center justify-center px-6">
+            <Text className="text-center text-base font-semibold text-vinyl-black">
+              Захиалга ачаалж чадсангүй
+            </Text>
+            <Text className="mt-1 text-center text-sm text-vinyl-muted">
+              Сүлжээгээ шалгаад дахин оролдоно уу.
+            </Text>
+            <Pressable
+              onPress={() => (onRetry ? onRetry() : router.back())}
+              className="mt-4 rounded-xl bg-vinyl-black px-6 py-3"
+            >
+              <Text className="text-sm font-semibold text-vinyl-paper">
+                {onRetry ? 'Дахин оролдох' : 'Буцах'}
+              </Text>
+            </Pressable>
           </View>
         ) : !order ? (
           <View className="flex-1 items-center justify-center px-6">

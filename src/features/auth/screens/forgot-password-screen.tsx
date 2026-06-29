@@ -99,6 +99,9 @@ export function ForgotPasswordScreen() {
           <Text className="mt-3 text-center text-sm text-[#757575]">
             Бид {email.trim()} хаяг руу нууц үг сэргээх холбоос илгээлээ.
           </Text>
+          <Text className="mt-2 text-center text-sm text-[#757575]">
+            Холбоосыг утас дээрээ нээж, апп-аа ашиглана уу.
+          </Text>
           <Link href="/" asChild>
             <Pressable
               accessibilityRole="button"

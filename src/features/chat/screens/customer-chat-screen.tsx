@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Text, View } from 'react-native';
 import { CustomerHomeHeader } from '../../home/components/customer-home-header';
 import { useAuthSessionQuery } from '../../auth/api/use-auth-session-query';
 import { ChatComposer } from '../components/chat-composer';
@@ -14,7 +14,7 @@ import { useMarkThreadReadMutation } from '../api/use-mark-thread-read-mutation'
 import { chatKeys } from '../api/chat-keys';
 import { useKeyboardHeight } from '../hooks/use-keyboard-height';
 import { setActiveChatThreadId } from '../lib/active-chat';
-import { supabase } from '../../../lib/supabase';
+import { usePostgresChannel } from '../hooks/use-postgres-channel';
 
 type CustomerChatScreenProps = {
   avatarUrl: string | null;
@@ -62,11 +62,12 @@ export function CustomerChatScreen({
     };
   }, [threadId]);
 
-  useEffect(() => {
-    if (!threadId || !userId) return;
-    const channel = supabase
-      .channel(`chat-thread-${threadId}`)
-      .on(
+  usePostgresChannel({
+    enabled: Boolean(threadId && userId),
+    channelKey: threadId ? `chat-thread-${threadId}` : '',
+    setup: (channel) => {
+      if (!threadId || !userId) return;
+      channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -83,13 +84,9 @@ export function CustomerChatScreen({
             userIdForInvalidation: userId,
           });
         },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [threadId, userId, qc]);
+      );
+    },
+  });
 
   const canSend = useMemo(() => {
     return Boolean((text.trim().length > 0 || localImageUri) && threadId && userId) && !sendMutation.isPending;
@@ -126,6 +123,14 @@ export function CustomerChatScreen({
             role: 'user',
             userIdForInvalidation: userId,
           });
+        },
+        onError: (err) => {
+          Alert.alert(
+            'Илгээж чадсангүй',
+            err instanceof Error
+              ? err.message
+              : 'Мессеж илгээхэд алдаа гарлаа. Дахин оролдоно уу.',
+          );
         },
       },
     );

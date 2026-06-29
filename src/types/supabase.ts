@@ -87,6 +87,7 @@ export type Database = {
           image_url: string | null
           specs: Json | null
           is_laser_printing_enabled: boolean
+          is_featured: boolean
           available: boolean
           options_enabled: boolean
           options_label: string | null
@@ -106,6 +107,7 @@ export type Database = {
           image_url?: string | null
           specs?: Json | null
           is_laser_printing_enabled?: boolean
+          is_featured?: boolean
           available?: boolean
           options_enabled?: boolean
           options_label?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           image_url?: string | null
           specs?: Json | null
           is_laser_printing_enabled?: boolean
+          is_featured?: boolean
           available?: boolean
           options_enabled?: boolean
           options_label?: string | null
@@ -560,6 +563,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_signup_identity_available: {
+        Args: {
+          p_email: string
+          p_phone_number: string
+        }
+        Returns: Json
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

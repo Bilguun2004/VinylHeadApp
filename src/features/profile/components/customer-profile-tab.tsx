@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { LogOut } from 'lucide-react-native';
+import { LogOut, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -14,7 +15,9 @@ import {
 
 import type { AdminOrderWithDetails } from '../../admin/api/use-admin-orders-query';
 import { useAuthSessionQuery } from '../../auth/api/use-auth-session-query';
+import { useDeleteAccountMutation } from '../../auth/api/use-delete-account-mutation';
 import { useSignOutMutation } from '../../auth/api/use-sign-out-mutation';
+import { getPrivacyPolicyUrl } from '../../../lib/legal-urls';
 import { OrderCard } from '../../orders/components/order-card';
 import { useCustomerOrdersQuery } from '../api/use-customer-orders-query';
 import { useProfileQuery } from '../api/use-profile-query';
@@ -55,7 +58,7 @@ function ProfileField({
           keyboardType={keyboardType}
           textContentType={keyboardType === 'phone-pad' ? 'telephoneNumber' : 'name'}
           editable={editable}
-          className="p-0 font-serif text-base leading-6 text-vinyl-black"
+          className="p-0 font-normal text-base leading-6 text-vinyl-black"
           accessibilityLabel={label}
         />
       </View>
@@ -71,7 +74,9 @@ export function CustomerProfileTab() {
   const profileQuery = useProfileQuery(userId);
   const ordersQuery = useCustomerOrdersQuery(userId);
   const signOutMutation = useSignOutMutation();
+  const deleteAccountMutation = useDeleteAccountMutation();
   const updateProfileMutation = useUpdateProfileMutation();
+  const privacyPolicyUrl = getPrivacyPolicyUrl();
   const uploadAvatarMutation = useUploadProfileAvatarMutation();
 
   const [fullName, setFullName] = useState('');
@@ -165,10 +170,41 @@ export function CustomerProfileTab() {
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Бүртгэл устгах',
+      'Таны профайл, чат, мэдэгдэл болон бусад хувийн мэдээлэл бүрмөсөн устгагдана. Захиалгын түүх хадгалагдаж болно. Үйлдлийг буцаах боломжгүй. Үргэлжлүүлэх үү?',
+      [
+        { text: 'Цуцлах', style: 'cancel' },
+        {
+          text: 'Бүртгэл устгах',
+          style: 'destructive',
+          onPress: () => {
+            deleteAccountMutation.mutate(undefined, {
+              onError: (err) => {
+                const message =
+                  err instanceof Error
+                    ? err.message
+                    : 'Бүртгэл устгаж чадсангүй. Дахин оролдоно уу.';
+                Alert.alert('Алдаа', message);
+              },
+            });
+          },
+        },
+      ],
+    );
+  };
+
+  const handleOpenPrivacyPolicy = () => {
+    if (!privacyPolicyUrl) return;
+    void Linking.openURL(privacyPolicyUrl);
+  };
+
   const avatarUploading = uploadAvatarMutation.isPending;
 
   const busy =
     signOutMutation.isPending ||
+    deleteAccountMutation.isPending ||
     updateProfileMutation.isPending ||
     avatarUploading ||
     profileQuery.isPending;
@@ -197,6 +233,23 @@ export function CustomerProfileTab() {
           <View className="items-center py-16">
             <ActivityIndicator />
           </View>
+        ) : profileQuery.isError ? (
+          <View className="items-center px-6 py-16">
+            <Text className="text-center text-base font-semibold text-vinyl-black">
+              Профайл ачаалж чадсангүй
+            </Text>
+            <Text className="mt-1 text-center text-sm text-vinyl-muted">
+              Сүлжээгээ шалгаад дахин оролдоно уу.
+            </Text>
+            <Pressable
+              onPress={() => void profileQuery.refetch()}
+              className="mt-4 rounded-xl bg-vinyl-black px-6 py-3"
+            >
+              <Text className="text-sm font-semibold text-vinyl-paper">
+                Дахин оролдох
+              </Text>
+            </Pressable>
+          </View>
         ) : (
           <>
             <View className="mb-8 items-center pt-2">
@@ -209,7 +262,7 @@ export function CustomerProfileTab() {
                 accessibilityLabel="Профайл зураг солих"
               />
               {displayName ? (
-                <Text className="mt-5 text-center font-serif text-[28px] font-bold leading-8 text-vinyl-black">
+                <Text className="mt-5 text-center font-normal text-[28px] font-bold leading-8 text-vinyl-black">
                   {displayName}
                 </Text>
               ) : null}
@@ -251,7 +304,7 @@ export function CustomerProfileTab() {
             </Pressable>
 
             <View className="flex-row items-end justify-between">
-              <Text className="font-serif text-2xl font-semibold text-vinyl-black">
+              <Text className="font-normal text-2xl font-semibold text-vinyl-black">
                 Миний захиалга
               </Text>
               {showSeeAllLink ? (
@@ -287,11 +340,24 @@ export function CustomerProfileTab() {
                 ))}
               </View>
             )}
+
+            {privacyPolicyUrl ? (
+              <Pressable
+                onPress={handleOpenPrivacyPolicy}
+                accessibilityRole="link"
+                accessibilityLabel="Нууцлалын бодлого"
+                className="mt-8 items-center py-2"
+              >
+                <Text className="text-sm text-vinyl-muted underline">
+                  Нууцлалын бодлого
+                </Text>
+              </Pressable>
+            ) : null}
           </>
         )}
       </ScrollView>
 
-      <View className="border-t border-vinyl-divider bg-vinyl-paper px-6 py-4">
+      <View className="gap-3 border-t border-vinyl-divider bg-vinyl-paper px-6 py-4">
         <Pressable
           onPress={handleLogout}
           disabled={busy}
@@ -308,6 +374,28 @@ export function CustomerProfileTab() {
             <>
               <LogOut size={20} color="#DC2626" />
               <Text className="ml-2 text-base font-semibold text-red-600">Гарах</Text>
+            </>
+          )}
+        </Pressable>
+
+        <Pressable
+          onPress={handleDeleteAccount}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Бүртгэл устгах"
+          accessibilityState={{ disabled: busy, busy: deleteAccountMutation.isPending }}
+          className={`h-14 flex-row items-center justify-center rounded-2xl border border-red-300 bg-red-50 ${
+            busy ? 'opacity-70' : ''
+          }`}
+        >
+          {deleteAccountMutation.isPending ? (
+            <ActivityIndicator color="#B91C1C" />
+          ) : (
+            <>
+              <Trash2 size={20} color="#B91C1C" />
+              <Text className="ml-2 text-base font-semibold text-red-700">
+                Бүртгэл устгах
+              </Text>
             </>
           )}
         </Pressable>

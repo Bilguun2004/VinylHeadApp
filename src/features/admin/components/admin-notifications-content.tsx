@@ -80,7 +80,7 @@ function NotificationHistoryRow({ item }: HistoryRowProps) {
         </Text>
         <Text className="text-xs text-vinyl-muted">{formatSentAt(item.sent_at)}</Text>
       </View>
-      <Text className="mt-2 font-serif text-base font-semibold text-vinyl-black">
+      <Text className="mt-2 font-normal text-base font-semibold text-vinyl-black">
         {item.title}
       </Text>
       <Text className="mt-1 text-sm text-vinyl-muted" numberOfLines={3}>
@@ -241,7 +241,7 @@ export function AdminNotificationsContent() {
 
   const listHeader = (
     <View className="px-5 pt-2">
-      <Text className="font-serif text-3xl text-vinyl-black">Мэдэгдэл илгээх</Text>
+      <Text className="font-normal text-3xl text-vinyl-black">Мэдэгдэл илгээх</Text>
       <Text className="mt-1 text-sm text-vinyl-muted">
         Push мэдэгдэл бичиж илгээнэ үү
       </Text>
@@ -290,7 +290,7 @@ export function AdminNotificationsContent() {
   const composeBody = (
     <>
       <View className="mx-5 mt-4 rounded-2xl bg-white px-4 py-4 shadow-sm">
-        <Text className="font-serif text-lg font-semibold text-vinyl-black">
+        <Text className="font-normal text-lg font-semibold text-vinyl-black">
           Агуулга
         </Text>
         <View className="mt-4">
@@ -320,7 +320,7 @@ export function AdminNotificationsContent() {
       </View>
 
       <View className="mx-5 mt-4 rounded-2xl bg-white px-4 py-4 shadow-sm">
-        <Text className="font-serif text-lg font-semibold text-vinyl-black">
+        <Text className="font-normal text-lg font-semibold text-vinyl-black">
           Тохиргоо
         </Text>
         <View className="mt-4 flex-row gap-4">
@@ -504,7 +504,7 @@ export function AdminNotificationsContent() {
             onPress={() => setCategoryOpen(false)}
           />
           <View className="rounded-t-3xl bg-white px-5 pb-8 pt-4">
-            <Text className="mb-3 text-center font-serif text-lg font-semibold text-vinyl-black">
+            <Text className="mb-3 text-center font-normal text-lg font-semibold text-vinyl-black">
               Ангилал
             </Text>
             {NOTIFICATION_CATEGORIES.map((opt) => (

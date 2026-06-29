@@ -1,9 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import type { AuthError, Session } from '@supabase/supabase-js';
 import { InteractionManager, Platform } from 'react-native';
 
 import { supabase } from '../../../lib/supabase';
+import { isInvalidRefreshTokenError } from './is-invalid-refresh-token-error';
 
 const BIOMETRIC_ENABLED_KEY = 'vinylhead.biometric.enabled';
 const BIOMETRIC_EMAIL_KEY = 'vinylhead.biometric.email';
@@ -75,14 +77,10 @@ function mapBiometricError(
 }
 
 function mapRefreshError(error: AuthError): string {
-  const msg = error.message.toLowerCase();
-  if (
-    msg.includes('invalid refresh token') ||
-    msg.includes('refresh token not found') ||
-    msg.includes('session not found')
-  ) {
+  if (isInvalidRefreshTokenError(error)) {
     return 'Хадгалсан нэвтрэлт хуучирсан байна. Имэйл, нууц үгээрээ дахин нэвтэрч Face ID-г дахин идэвхжүүлнэ үү.';
   }
+  const msg = error.message.toLowerCase();
   if (msg.includes('network') || msg.includes('fetch')) {
     return 'Сүлжээний алдаа. Интернэт холболтоо шалгаад дахин оролдоно уу.';
   }
@@ -129,12 +127,58 @@ async function promptBiometricAuth(_kind: BiometricKind): Promise<void> {
 }
 
 function assertValidRefreshToken(refreshToken: string): void {
-  const trimmed = refreshToken.trim();
-  if (trimmed.length < 20) {
+  if (refreshToken.trim().length === 0) {
+    throw new Error('Refresh token олдсонгүй. Дахин нэвтэрнэ үү.');
+  }
+}
+
+async function readBiometricVaultRaw(): Promise<string | null> {
+  const fromAsync = await AsyncStorage.getItem(BIOMETRIC_SESSION_KEY);
+  if (fromAsync !== null) return fromAsync;
+
+  const fromSecure = await SecureStore.getItemAsync(BIOMETRIC_SESSION_KEY);
+  if (fromSecure !== null) {
+    await AsyncStorage.setItem(BIOMETRIC_SESSION_KEY, fromSecure);
+    await SecureStore.deleteItemAsync(BIOMETRIC_SESSION_KEY).catch(() => undefined);
+  }
+  return fromSecure;
+}
+
+async function writeBiometricVault(refreshToken: string): Promise<void> {
+  const payload: BiometricVaultPayload = { refresh_token: refreshToken };
+  const serialized = JSON.stringify(payload);
+  await AsyncStorage.setItem(BIOMETRIC_SESSION_KEY, serialized);
+
+  const readBack = await AsyncStorage.getItem(BIOMETRIC_SESSION_KEY);
+  if (readBack === null) {
     throw new Error(
-      'Refresh token бүрэн хадгалагдаагүй байна. Имэйл, нууц үгээрээ дахин нэвтэрч Face ID-г дахин идэвхжүүлнэ үү.',
+      'Refresh token хадгалж чадсангүй. Дахин нэвтэрч Face ID-г дахин идэвхжүүлнэ үү.',
     );
   }
+  parseVaultPayload(readBack);
+}
+
+/** Prefer persisted session — sign-in mutation may omit refresh_token. */
+async function resolveRefreshTokenForVault(
+  session: Session | null | undefined,
+): Promise<string> {
+  const fromArg = session?.refresh_token?.trim();
+  if (fromArg) {
+    assertValidRefreshToken(fromArg);
+    return fromArg;
+  }
+
+  const { data: { session: stored }, error } = await supabase.auth.getSession();
+  if (error) {
+    throw new Error(mapRefreshError(error));
+  }
+
+  const fromStorage = stored?.refresh_token?.trim();
+  if (!fromStorage) {
+    throw new Error('Refresh token олдсонгүй. Дахин нэвтэрнэ үү.');
+  }
+  assertValidRefreshToken(fromStorage);
+  return fromStorage;
 }
 
 function parseVaultPayload(raw: string): BiometricVaultPayload {
@@ -222,7 +266,7 @@ export async function canUseBiometricLogin(): Promise<boolean> {
   const [enabled, support, vault] = await Promise.all([
     isBiometricLoginEnabled(),
     getBiometricSupport(),
-    SecureStore.getItemAsync(BIOMETRIC_SESSION_KEY),
+    readBiometricVaultRaw(),
   ]);
   return enabled && support.available && vaultHasValidRefreshToken(vault);
 }
@@ -231,7 +275,7 @@ export async function canUseBiometricLogin(): Promise<boolean> {
 export async function logBiometricDebugState(): Promise<BiometricDebugState> {
   const [enabledFlag, vault, savedEmail, support, canUse] = await Promise.all([
     isBiometricLoginEnabled(),
-    SecureStore.getItemAsync(BIOMETRIC_SESSION_KEY),
+    readBiometricVaultRaw(),
     getBiometricLoginEmail(),
     getBiometricSupport(),
     canUseBiometricLogin(),
@@ -271,7 +315,7 @@ export async function logBiometricDebugState(): Promise<BiometricDebugState> {
 /** Clears a broken partial setup (enabled flag set but vault missing). */
 export async function repairBiometricLoginState(): Promise<void> {
   const enabled = await isBiometricLoginEnabled();
-  const vault = await SecureStore.getItemAsync(BIOMETRIC_SESSION_KEY);
+  const vault = await readBiometricVaultRaw();
   if (enabled && !vaultHasValidRefreshToken(vault)) {
     await clearBiometricLogin();
   }
@@ -292,21 +336,12 @@ export async function enableBiometricLogin(
     throw new Error('Энэ төхөөрөмж дээр биометрик тохируулаагүй байна.');
   }
 
-  const refreshToken = session.refresh_token?.trim();
-  if (!refreshToken) {
-    throw new Error('Refresh token олдсонгүй. Дахин нэвтэрнэ үү.');
-  }
-  assertValidRefreshToken(refreshToken);
+  const refreshToken = await resolveRefreshTokenForVault(session);
 
   await promptBiometricAuth(support.kind);
   await clearBiometricLogin();
 
-  const payload: BiometricVaultPayload = { refresh_token: refreshToken };
-
-  await SecureStore.setItemAsync(
-    BIOMETRIC_SESSION_KEY,
-    JSON.stringify(payload),
-  );
+  await writeBiometricVault(refreshToken);
   await SecureStore.setItemAsync(BIOMETRIC_EMAIL_KEY, email.trim());
   await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
 
@@ -321,6 +356,7 @@ export async function clearBiometricLogin(): Promise<void> {
     SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY).catch(() => undefined),
     SecureStore.deleteItemAsync(BIOMETRIC_EMAIL_KEY).catch(() => undefined),
     SecureStore.deleteItemAsync(BIOMETRIC_SESSION_KEY).catch(() => undefined),
+    AsyncStorage.removeItem(BIOMETRIC_SESSION_KEY).catch(() => undefined),
   ]);
 }
 
@@ -341,7 +377,7 @@ export async function signInWithBiometric(): Promise<Session> {
 
   await promptBiometricAuth(support.kind);
 
-  const raw = await SecureStore.getItemAsync(BIOMETRIC_SESSION_KEY);
+  const raw = await readBiometricVaultRaw();
   if (!raw) {
     await clearBiometricLogin();
     throw new Error(
@@ -380,10 +416,7 @@ export async function signInWithBiometric(): Promise<Session> {
 
   const nextRefresh = data.session.refresh_token?.trim();
   if (nextRefresh) {
-    await SecureStore.setItemAsync(
-      BIOMETRIC_SESSION_KEY,
-      JSON.stringify({ refresh_token: nextRefresh } satisfies BiometricVaultPayload),
-    );
+    await writeBiometricVault(nextRefresh);
   }
 
   if (__DEV__) {

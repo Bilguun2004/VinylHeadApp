@@ -1,7 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { debugLog } from '../../../lib/debug-log';
 import { supabase } from '../../../lib/supabase';
 import { uploadChatImageFromUri } from '../lib/upload-chat-image';
 import { chatKeys } from './chat-keys';
@@ -50,40 +48,12 @@ export function useSendChatMessageMutation() {
       if (insertError) throw insertError;
 
       // Trigger push (server may suppress if receiver is currently active in chat).
-      const pushRes = await supabase.functions.invoke('send-chat-push', {
-        body: { threadId, messageId: row.id },
-      });
-
-      let pushBody: unknown = null;
-      try {
-        pushBody = pushRes.data ?? (await pushRes.response?.json());
-      } catch {
-        pushBody = null;
-      }
-
-      await debugLog(
-        'use-send-chat-message-mutation.ts',
-        'send-chat-push invoke result',
-        {
-          threadId,
-          messageId: row.id,
-          error: pushRes.error?.message ?? null,
-          status: pushRes.response?.status ?? null,
-          body: pushBody,
-        },
-        'H5',
-      );
-
-      try {
-        await AsyncStorage.setItem(
-          'vinylhead.push.lastInvoke',
-          JSON.stringify(
-            typeof pushBody === 'object' && pushBody !== null ? pushBody : { raw: pushBody },
-          ),
-        );
-      } catch {
-        /* non-fatal */
-      }
+      // Best-effort: a delivery failure should not fail the message send.
+      await supabase.functions
+        .invoke('send-chat-push', {
+          body: { threadId, messageId: row.id },
+        })
+        .catch(() => undefined);
 
       return { messageId: row.id };
     },

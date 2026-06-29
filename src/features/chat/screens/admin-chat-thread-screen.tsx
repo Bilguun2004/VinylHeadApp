@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   Text,
@@ -22,7 +23,7 @@ import { useToggleFollowUpMutation } from '../api/use-toggle-follow-up-mutation'
 import { chatKeys } from '../api/chat-keys';
 import { useKeyboardHeight } from '../hooks/use-keyboard-height';
 import { setActiveChatThreadId } from '../lib/active-chat';
-import { supabase } from '../../../lib/supabase';
+import { usePostgresChannel } from '../hooks/use-postgres-channel';
 
 type Props = {
   threadId: string;
@@ -69,11 +70,12 @@ export function AdminChatThreadScreen({
     };
   }, [threadId]);
 
-  useEffect(() => {
-    if (!threadId) return;
-    const channel = supabase
-      .channel(`chat-thread-admin-${threadId}`)
-      .on(
+  usePostgresChannel({
+    enabled: Boolean(threadId),
+    channelKey: threadId ? `chat-thread-admin-${threadId}` : '',
+    setup: (channel) => {
+      if (!threadId) return;
+      channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -86,13 +88,9 @@ export function AdminChatThreadScreen({
           void qc.invalidateQueries({ queryKey: chatKeys.adminThreads('') });
           markReadMutation.mutate({ threadId, role: 'admin' });
         },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [threadId, qc]);
+      );
+    },
+  });
 
   const canSend = useMemo(() => {
     return Boolean((text.trim().length > 0 || localImageUri) && threadId && adminId) && !sendMutation.isPending;
@@ -125,6 +123,14 @@ export function AdminChatThreadScreen({
           setText('');
           setLocalImageUri(null);
           markReadMutation.mutate({ threadId, role: 'admin' });
+        },
+        onError: (err) => {
+          Alert.alert(
+            'Илгээж чадсангүй',
+            err instanceof Error
+              ? err.message
+              : 'Мессеж илгээхэд алдаа гарлаа. Дахин оролдоно уу.',
+          );
         },
       },
     );

@@ -6,6 +6,7 @@ import {
   ImagePlus,
   Package,
   Printer,
+  Star,
   X,
 } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -110,6 +111,7 @@ export function AdminAddProductScreen() {
   const [giftWrapDiscountPrice, setGiftWrapDiscountPrice] = useState('0');
   const [laserEnabled, setLaserEnabled] = useState(false);
   const [available, setAvailable] = useState(true);
+  const [isFeatured, setIsFeatured] = useState(false);
   const [optionsEnabled, setOptionsEnabled] = useState(false);
   const [optionsLabel, setOptionsLabel] = useState('Өнгө');
   const [optionDrafts, setOptionDrafts] = useState<ProductOptionDraft[]>([]);
@@ -134,6 +136,7 @@ export function AdminAddProductScreen() {
     setGiftWrapDiscountPrice(moneyToInput(gift.giftWrapDiscountPrice));
     setLaserEnabled(product.is_laser_printing_enabled);
     setAvailable(product.available !== false);
+    setIsFeatured(product.is_featured === true);
     setOptionsEnabled(product.options_enabled === true);
     setOptionsLabel(product.options_label?.trim() || 'Өнгө');
     const slots = buildSlotsFromProduct(product);
@@ -272,6 +275,7 @@ export function AdminAddProductScreen() {
           giftWrapPrice: gwp,
           giftWrapDiscountPrice: gwdp,
           isLaserPrintingEnabled: laserEnabled,
+          isFeatured,
           available,
           optionsEnabled,
           optionsLabel,
@@ -305,6 +309,7 @@ export function AdminAddProductScreen() {
         giftWrapPrice: gwp,
         giftWrapDiscountPrice: gwdp,
         isLaserPrintingEnabled: laserEnabled,
+        isFeatured,
         available,
         optionsEnabled,
         optionsLabel,
@@ -618,6 +623,20 @@ export function AdminAddProductScreen() {
               value={available}
               onValueChange={setAvailable}
               accessibilityLabel="Боломжтой"
+            />
+          </View>
+
+          <View className="mb-4 flex-row items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm">
+            <View className="flex-row items-center pr-3">
+              <Star size={18} color="#0A0A0A" />
+              <Text className="ml-3 flex-1 text-sm text-vinyl-black">
+                Онцлох
+              </Text>
+            </View>
+            <Switch
+              value={isFeatured}
+              onValueChange={setIsFeatured}
+              accessibilityLabel="Онцлох"
             />
           </View>
 
