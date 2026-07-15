@@ -1,6 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 import {
   ArrowLeft,
+  Copy,
   Download,
   Gift,
   MapPin,
@@ -34,9 +36,15 @@ import {
 import { useUpdateOrderStatusMutation } from '../../admin/api/use-update-order-status-mutation';
 import { downloadLaserPrintImage } from '../../admin/lib/download-laser-image';
 import {
+  getInstagramStoryFontFamily,
+  parseInstagramStoryFontId,
+} from '../../products/lib/instagram-story-fonts';
+import {
+  displayOrderStatusKind,
   normalizeOrderStatus,
-  statusLabelMn,
+  orderDisplayLabelMn,
 } from '../../admin/lib/order-status';
+import { PaymentMethodMark } from '../components/payment-method-mark';
 
 const FALLBACK_PRODUCT_IMAGE =
   'https://images.unsplash.com/photo-1560507074-b9eb43a0c9a4?auto=format&fit=crop&w=400&q=80';
@@ -45,9 +53,15 @@ function formatMntDisplay(amount: number) {
   return `₮${Math.round(amount).toLocaleString('en-US')}`;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const kind = normalizeOrderStatus(status);
-  const label = statusLabelMn(status);
+function StatusBadge({
+  status,
+  paymentStatus,
+}: {
+  status: string;
+  paymentStatus?: string | null;
+}) {
+  const kind = displayOrderStatusKind(status, paymentStatus);
+  const label = orderDisplayLabelMn(status, paymentStatus);
 
   if (kind === 'delivered') {
     return (
@@ -59,7 +73,7 @@ function StatusBadge({ status }: { status: string }) {
 
   if (kind === 'confirmed') {
     return (
-      <View className="rounded-full bg-vinyl-black px-3 py-1">
+      <View className="rounded-full bg-vinyl-confirmed px-3 py-1">
         <Text className="text-xs font-semibold text-vinyl-paper">{label}</Text>
       </View>
     );
@@ -90,6 +104,14 @@ function OrderLineCard({ item, orderNumber, readOnly }: OrderLineCardProps) {
   const giftName = item.gift_options?.name?.trim();
   const giftImageUri = giftWrapImageUrl(item);
   const laserUri = item.laser_print_image_url?.trim();
+  const laserText = item.laser_print_text?.trim();
+  const laserFontLabel = item.laser_print_font?.trim();
+  const laserNote = item.laser_print_note?.trim();
+  const hasLaser =
+    Boolean(laserUri) || Boolean(laserText) || Boolean(laserNote);
+  const laserFontFamily = laserFontLabel
+    ? getInstagramStoryFontFamily(parseInstagramStoryFontId(laserFontLabel))
+    : undefined;
 
   const onDownloadLaser = async () => {
     if (!laserUri) return;
@@ -108,6 +130,12 @@ function OrderLineCard({ item, orderNumber, readOnly }: OrderLineCardProps) {
     } finally {
       setDownloading(false);
     }
+  };
+
+  const onCopyLaserText = async () => {
+    if (!laserText) return;
+    await Clipboard.setStringAsync(laserText);
+    Alert.alert('Хуулсан', 'Хэвлэх үгийг хуулбарлав.');
   };
 
   return (
@@ -170,7 +198,7 @@ function OrderLineCard({ item, orderNumber, readOnly }: OrderLineCardProps) {
         </View>
       ) : null}
 
-      {laserUri ? (
+      {hasLaser ? (
         <View className="mt-3 overflow-hidden rounded-xl bg-vinyl-surface">
           <View className="flex-row items-center gap-2 px-3 pt-3">
             <Printer size={16} color="#0A0A0A" />
@@ -178,13 +206,56 @@ function OrderLineCard({ item, orderNumber, readOnly }: OrderLineCardProps) {
               Лазер хэвлэл
             </Text>
           </View>
-          <Image
-            source={{ uri: laserUri }}
-            className="mt-2 h-36 w-full"
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-          {!readOnly ? (
+
+          {laserText ? (
+            <View className="mx-3 mt-3 rounded-xl border border-vinyl-black/10 bg-white px-3 py-4">
+              <Text
+                style={
+                  laserFontFamily
+                    ? { fontFamily: laserFontFamily, fontSize: 24 }
+                    : { fontSize: 24 }
+                }
+                className="text-center text-vinyl-black"
+              >
+                {laserText}
+              </Text>
+              {laserFontLabel ? (
+                <Text className="mt-2 text-center text-xs text-vinyl-muted">
+                  Фонт: {laserFontLabel}
+                </Text>
+              ) : null}
+              {!readOnly ? (
+                <Pressable
+                  onPress={() => void onCopyLaserText()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Хэвлэх үгийг хуулбарлах"
+                  className="mx-auto mt-3 flex-row items-center justify-center rounded-xl border border-vinyl-black/20 bg-vinyl-surface px-4 py-2"
+                >
+                  <Copy size={14} color="#0A0A0A" />
+                  <Text className="ml-2 text-xs font-semibold text-vinyl-black">
+                    Үгийг хуулбарлах
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
+          {laserUri ? (
+            <Image
+              source={{ uri: laserUri }}
+              className="mt-2 h-36 w-full"
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          ) : null}
+
+          {laserNote ? (
+            <Text className="mx-3 mb-3 mt-3 text-sm leading-5 text-vinyl-black">
+              {laserNote}
+            </Text>
+          ) : null}
+
+          {laserUri && !readOnly ? (
             <Pressable
               onPress={() => void onDownloadLaser()}
               disabled={downloading}
@@ -242,6 +313,18 @@ export function OrderDetailScreen({
 
   const addressLines = order ? deliveryAddressLines(order) : [];
   const phone = order ? customerPhoneFromOrder(order) : '';
+
+  const onCopyPhone = async () => {
+    if (!phone) return;
+    await Clipboard.setStringAsync(phone);
+    Alert.alert('Хуулсан', 'Утасны дугаарыг хуулбарлав.');
+  };
+
+  const onCopyAddress = async () => {
+    if (addressLines.length === 0) return;
+    await Clipboard.setStringAsync(addressLines.join('\n'));
+    Alert.alert('Хуулсан', 'Хаягийг хуулбарлав.');
+  };
 
   const onToggleDelivered = () => {
     if (!order) return;
@@ -329,7 +412,10 @@ export function OrderDetailScreen({
                   <Text className="text-xs font-medium text-vinyl-muted">
                     #{order.order_number}
                   </Text>
-                  <StatusBadge status={order.status} />
+                  <StatusBadge
+                    status={order.status}
+                    paymentStatus={order.payment_status}
+                  />
                 </View>
                 <Text className="mt-2 font-serif text-2xl font-semibold text-vinyl-black">
                   {customerNameFromOrder(order)}
@@ -338,9 +424,10 @@ export function OrderDetailScreen({
                   {formatOrderDateTime(order.created_at)}
                 </Text>
                 {order.payment_method ? (
-                  <Text className="mt-1 text-xs text-vinyl-muted">
-                    Төлбөр: {order.payment_method}
-                  </Text>
+                  <View className="mt-3 flex-row items-center">
+                    <Text className="mr-2 text-xs text-vinyl-muted">Төлбөр:</Text>
+                    <PaymentMethodMark method={order.payment_method} size="md" />
+                  </View>
                 ) : null}
               </View>
 
@@ -367,6 +454,17 @@ export function OrderDetailScreen({
                           {phone}
                         </Text>
                       </View>
+                      {!readOnly ? (
+                        <Pressable
+                          onPress={() => void onCopyPhone()}
+                          accessibilityRole="button"
+                          accessibilityLabel="Утасны дугаарыг хуулбарлах"
+                          hitSlop={8}
+                          className="h-9 w-9 items-center justify-center rounded-xl border border-vinyl-divider bg-vinyl-surface"
+                        >
+                          <Copy size={14} color="#0A0A0A" />
+                        </Pressable>
+                      ) : null}
                     </View>
                   ) : null}
                   {addressLines.length > 0 ? (
@@ -383,6 +481,17 @@ export function OrderDetailScreen({
                           </Text>
                         ))}
                       </View>
+                      {!readOnly ? (
+                        <Pressable
+                          onPress={() => void onCopyAddress()}
+                          accessibilityRole="button"
+                          accessibilityLabel="Хаягийг хуулбарлах"
+                          hitSlop={8}
+                          className="h-9 w-9 items-center justify-center rounded-xl border border-vinyl-divider bg-vinyl-surface"
+                        >
+                          <Copy size={14} color="#0A0A0A" />
+                        </Pressable>
+                      ) : null}
                     </View>
                   ) : (
                     <Text className="mt-3 text-sm text-vinyl-muted">

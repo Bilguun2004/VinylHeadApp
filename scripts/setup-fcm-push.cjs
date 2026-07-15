@@ -14,7 +14,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const PACKAGE = 'com.bilguun88.vinylheadapp';
+const PACKAGE = 'com.vinylhead.app';
 const GOOGLE_SERVICES = path.join(ROOT, 'google-services.json');
 const EXPO_PROJECT = 'https://expo.dev/accounts/bilguun88/projects/VinylHeadApp';
 const FIREBASE_CONSOLE = 'https://console.firebase.google.com/';

@@ -1,4 +1,7 @@
 import type { ProductWithCategory } from '../../products/api/use-product-query';
+import {
+  DEFAULT_INSTAGRAM_STORY_FONT_ID,
+} from '../../products/lib/instagram-story-fonts';
 import type {
   CartGiftSelection,
   CartLaserSelection,
@@ -10,7 +13,6 @@ import {
   laserExtraFromSpecs,
   productDisplayPrice,
 } from './cart-pricing';
-
 function productSubtitle(product: ProductWithCategory): string {
   const cat = product.categories?.name ?? '';
   if (cat && product.artist) return `${product.artist} • ${cat}`;
@@ -49,6 +51,9 @@ export function buildCartLineItem(params: BuildCartLineParams): CartLineItem {
     laserEnabled: laser != null,
     laserExtra: laser?.extra ?? laserExtraFromSpecs(specs),
     laserImageUri: laser?.imageUri ?? null,
+    laserPrintText: laser?.printText ?? '',
+    laserPrintFont: laser?.printFont ?? DEFAULT_INSTAGRAM_STORY_FONT_ID,
+    laserPrintNote: laser?.note ?? '',
   };
 }
 

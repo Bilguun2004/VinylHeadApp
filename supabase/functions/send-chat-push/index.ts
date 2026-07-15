@@ -220,6 +220,21 @@ Deno.serve(async (req) => {
   const body =
     (msg.text && msg.text.trim()) ? msg.text.trim() : (msg.image_url ? 'Зураг' : 'Шинэ мессеж');
 
+  const pushData: Record<string, string> = {
+    type: 'chat',
+    threadId,
+    messageId,
+    senderRole: String(msg.sender_role),
+    senderName: senderDisplayName,
+    senderAvatarUrl,
+  };
+
+  if (msg.sender_role === 'user') {
+    pushData.recipientRole = 'admin';
+  } else {
+    pushData.recipientUserId = thread.user_id;
+  }
+
   const messages: ExpoPushMessage[] = uniqueTokens.map((to) => ({
     to,
     title,
@@ -227,14 +242,7 @@ Deno.serve(async (req) => {
     sound: 'default',
     priority: 'high',
     channelId: 'default',
-    data: {
-      type: 'chat',
-      threadId,
-      messageId,
-      senderRole: String(msg.sender_role),
-      senderName: senderDisplayName,
-      senderAvatarUrl,
-    },
+    data: pushData,
   }));
 
   try {

@@ -450,6 +450,33 @@ export type Database = {
         }
         Relationships: []
       }
+      bonum_auth_tokens: {
+        Row: {
+          terminal_id: string
+          access_token: string
+          refresh_token: string
+          access_expires_at: string
+          refresh_expires_at: string
+          updated_at: string
+        }
+        Insert: {
+          terminal_id: string
+          access_token: string
+          refresh_token: string
+          access_expires_at: string
+          refresh_expires_at: string
+          updated_at?: string
+        }
+        Update: {
+          terminal_id?: string
+          access_token?: string
+          refresh_token?: string
+          access_expires_at?: string
+          refresh_expires_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           id: string
@@ -457,6 +484,11 @@ export type Database = {
           order_number: string
           status: string
           payment_method: string | null
+          payment_status: string
+          bonum_invoice_id: string | null
+          bonum_transaction_id: string | null
+          bonum_follow_up_link: string | null
+          paid_at: string | null
           subtotal: number
           delivery_fee: number
           gift_wrap_total: number
@@ -471,6 +503,11 @@ export type Database = {
           order_number: string
           status?: string
           payment_method?: string | null
+          payment_status?: string
+          bonum_invoice_id?: string | null
+          bonum_transaction_id?: string | null
+          bonum_follow_up_link?: string | null
+          paid_at?: string | null
           subtotal: number
           delivery_fee?: number
           gift_wrap_total?: number
@@ -485,6 +522,11 @@ export type Database = {
           order_number?: string
           status?: string
           payment_method?: string | null
+          payment_status?: string
+          bonum_invoice_id?: string | null
+          bonum_transaction_id?: string | null
+          bonum_follow_up_link?: string | null
+          paid_at?: string | null
           subtotal?: number
           delivery_fee?: number
           gift_wrap_total?: number
@@ -512,6 +554,9 @@ export type Database = {
           unit_price: number
           gift_option_id: string | null
           laser_print_image_url: string | null
+          laser_print_text: string | null
+          laser_print_font: string | null
+          laser_print_note: string | null
           created_at: string
         }
         Insert: {
@@ -522,6 +567,9 @@ export type Database = {
           unit_price: number
           gift_option_id?: string | null
           laser_print_image_url?: string | null
+          laser_print_text?: string | null
+          laser_print_font?: string | null
+          laser_print_note?: string | null
           created_at?: string
         }
         Update: {
@@ -532,6 +580,9 @@ export type Database = {
           unit_price?: number
           gift_option_id?: string | null
           laser_print_image_url?: string | null
+          laser_print_text?: string | null
+          laser_print_font?: string | null
+          laser_print_note?: string | null
           created_at?: string
         }
         Relationships: [

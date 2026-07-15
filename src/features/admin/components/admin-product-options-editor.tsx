@@ -53,23 +53,25 @@ export function AdminProductOptionsEditor({
 
   return (
     <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center pr-3">
+      <View className="flex-row items-center justify-between overflow-hidden">
+        <View className="min-w-0 flex-1 flex-row items-center pr-3">
           <Palette size={18} color="#0A0A0A" />
-          <Text className="ml-3 flex-1 text-sm text-vinyl-black">
+          <Text className="ml-3 shrink text-sm text-vinyl-black">
             Өнгө / сонголт идэвхжүүлэх
           </Text>
         </View>
-        <Switch
-          value={enabled}
-          onValueChange={(next) => {
-            onEnabledChange(next);
-            if (next && drafts.length === 0) {
-              onDraftsChange([newOptionDraft()]);
-            }
-          }}
-          accessibilityLabel="Өнгө / сонголт идэвхжүүлэх"
-        />
+        <View className="shrink-0">
+          <Switch
+            value={enabled}
+            onValueChange={(next) => {
+              onEnabledChange(next);
+              if (next && drafts.length === 0) {
+                onDraftsChange([newOptionDraft()]);
+              }
+            }}
+            accessibilityLabel="Өнгө / сонголт идэвхжүүлэх"
+          />
+        </View>
       </View>
 
       {enabled ? (
@@ -121,13 +123,17 @@ export function AdminProductOptionsEditor({
                 </Pressable>
               </View>
 
-              <View className="mt-3 flex-row items-center justify-between">
-                <Text className="text-xs text-vinyl-muted">Боломжтой</Text>
-                <Switch
-                  value={draft.available}
-                  onValueChange={(next) => updateDraft(index, { available: next })}
-                  accessibilityLabel={`${draft.label || 'Сонголт'} боломжтой`}
-                />
+              <View className="mt-3 flex-row items-center justify-between overflow-hidden">
+                <Text className="min-w-0 flex-1 shrink pr-3 text-xs text-vinyl-muted">
+                  Боломжтой
+                </Text>
+                <View className="shrink-0">
+                  <Switch
+                    value={draft.available}
+                    onValueChange={(next) => updateDraft(index, { available: next })}
+                    accessibilityLabel={`${draft.label || 'Сонголт'} боломжтой`}
+                  />
+                </View>
               </View>
 
               <Text className="mt-3 text-xs text-vinyl-muted">Зураг сонгох</Text>

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { CartLineItem } from '../types/cart-line-item';
+import { parseInstagramStoryFontId } from '../../products/lib/instagram-story-fonts';
 
 const CART_KEY = 'vinylhead:cart';
 
@@ -22,6 +23,13 @@ export async function loadCartFromStorage(): Promise<CartLineItem[]> {
         typeof line.productOptionLabel === 'string'
           ? line.productOptionLabel
           : null,
+      laserPrintText:
+        typeof line.laserPrintText === 'string' ? line.laserPrintText : '',
+      laserPrintFont: parseInstagramStoryFontId(
+        typeof line.laserPrintFont === 'string' ? line.laserPrintFont : null,
+      ),
+      laserPrintNote:
+        typeof line.laserPrintNote === 'string' ? line.laserPrintNote : '',
     }));
   } catch {
     return [];

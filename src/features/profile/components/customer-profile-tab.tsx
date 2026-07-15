@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LogOut, Trash2 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -73,6 +73,14 @@ export function CustomerProfileTab() {
 
   const profileQuery = useProfileQuery(userId);
   const ordersQuery = useCustomerOrdersQuery(userId);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      void ordersQuery.refetch();
+    }, [userId, ordersQuery.refetch]),
+  );
+
   const signOutMutation = useSignOutMutation();
   const deleteAccountMutation = useDeleteAccountMutation();
   const updateProfileMutation = useUpdateProfileMutation();

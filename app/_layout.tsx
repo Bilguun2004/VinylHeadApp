@@ -13,9 +13,16 @@ import {
   InAppNotificationHost,
   NotificationListeners,
 } from '../src/features/notifications/notification-listeners';
+import { useInstagramStoryFonts } from '../src/features/products/hooks/use-instagram-story-fonts';
 import { queryClient } from '../src/lib/query-client';
 
 export default function RootLayout() {
+  const { loaded: fontsLoaded } = useInstagramStoryFonts();
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

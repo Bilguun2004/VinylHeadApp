@@ -1,13 +1,35 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImagePlus, Printer } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
 
+import {
+  DEFAULT_INSTAGRAM_STORY_FONT_ID,
+  type InstagramStoryFontId,
+} from '../lib/instagram-story-fonts';
+import { LaserFontPicker } from './laser-font-picker';
 import { OptionToggle } from './option-toggle';
+
+const MAX_PRINT_TEXT_LENGTH = 40;
+const MAX_NOTE_LENGTH = 200;
+
+const fieldInputClass =
+  'rounded-xl border border-vinyl-black/20 bg-vinyl-surface px-3 py-2.5 text-base text-vinyl-black';
 
 export type LaserPrintSelection = {
   enabled: boolean;
   imageUri: string | null;
+  printText: string;
+  printFont: InstagramStoryFontId;
+  note: string;
+};
+
+export const EMPTY_LASER_PRINT_SELECTION: LaserPrintSelection = {
+  enabled: false,
+  imageUri: null,
+  printText: '',
+  printFont: DEFAULT_INSTAGRAM_STORY_FONT_ID,
+  note: '',
 };
 
 type ProductLaserPrintCardProps = {
@@ -21,26 +43,19 @@ export function ProductLaserPrintCard({
   selection,
   onSelectionChange,
 }: ProductLaserPrintCardProps) {
-  const [internalEnabled, setInternalEnabled] = useState(false);
-  const [internalUri, setInternalUri] = useState<string | null>(null);
+  const [internal, setInternal] = useState<LaserPrintSelection>(
+    EMPTY_LASER_PRINT_SELECTION,
+  );
 
   const controlled = selection != null && onSelectionChange != null;
-  const enabled = controlled ? selection.enabled : internalEnabled;
-  const previewUri = controlled ? selection.imageUri : internalUri;
+  const current = controlled ? selection : internal;
 
-  const setEnabled = (next: boolean) => {
+  const patch = (partial: Partial<LaserPrintSelection>) => {
+    const next = { ...current, ...partial };
     if (controlled) {
-      onSelectionChange({ enabled: next, imageUri: previewUri });
+      onSelectionChange(next);
     } else {
-      setInternalEnabled(next);
-    }
-  };
-
-  const setPreviewUri = (next: string | null) => {
-    if (controlled) {
-      onSelectionChange({ enabled, imageUri: next });
-    } else {
-      setInternalUri(next);
+      setInternal(next);
     }
   };
 
@@ -62,7 +77,7 @@ export function ProductLaserPrintCard({
     });
 
     if (!result.canceled && result.assets[0]?.uri) {
-      setPreviewUri(result.assets[0].uri);
+      patch({ imageUri: result.assets[0].uri });
     }
   };
 
@@ -81,26 +96,48 @@ export function ProductLaserPrintCard({
           </View>
         </View>
         <OptionToggle
-          value={enabled}
-          onValueChange={setEnabled}
+          value={current.enabled}
+          onValueChange={(enabled) => patch({ enabled })}
           accessibilityLabel="Лазер хэвлэл идэвхжүүлэх"
         />
       </View>
 
-      {enabled ? (
+      {current.enabled ? (
         <>
           <Text className="mt-3 text-xs leading-5 text-vinyl-muted">
             Өөрийн зургаа ачаалж, пянз тоглуулагч дээрээ хэвлүүлж аваарай
           </Text>
+
+          <Text className="mb-2 mt-4 text-xs text-vinyl-muted">
+            Хэвлэх үг
+          </Text>
+          <TextInput
+            value={current.printText}
+            onChangeText={(printText) =>
+              patch({ printText: printText.slice(0, MAX_PRINT_TEXT_LENGTH) })
+            }
+            placeholder="Жишээ нь: VinylHead"
+            placeholderTextColor="#A1A1A1"
+            maxLength={MAX_PRINT_TEXT_LENGTH}
+            className={fieldInputClass}
+            accessibilityLabel="Хэвлэх үг"
+          />
+
+          <LaserFontPicker
+            printText={current.printText}
+            selectedFontId={current.printFont}
+            onFontChange={(printFont) => patch({ printFont })}
+          />
+
           <Pressable
             onPress={pickImage}
             accessibilityRole="button"
             accessibilityLabel="Зураг оруулах"
-            className="mt-3 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-vinyl-black/40 bg-vinyl-surface py-10"
+            className="mt-4 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-vinyl-black/40 bg-vinyl-surface py-10"
           >
-            {previewUri ? (
+            {current.imageUri ? (
               <Image
-                source={{ uri: previewUri }}
+                source={{ uri: current.imageUri }}
                 style={{ width: '100%', height: 160 }}
                 resizeMode="cover"
                 accessibilityLabel="Сонгосон зураг"
@@ -114,6 +151,23 @@ export function ProductLaserPrintCard({
               </>
             )}
           </Pressable>
+
+          <Text className="mb-2 mt-4 text-xs text-vinyl-muted">
+            Нэмэлт тэмдэглэл
+          </Text>
+          <TextInput
+            value={current.note}
+            onChangeText={(note) =>
+              patch({ note: note.slice(0, MAX_NOTE_LENGTH) })
+            }
+            placeholder="Зурагтай хамт хэвлэх нэмэлт тайлбар..."
+            placeholderTextColor="#A1A1A1"
+            multiline
+            maxLength={MAX_NOTE_LENGTH}
+            className={`${fieldInputClass} min-h-[72px]`}
+            accessibilityLabel="Нэмэлт тэмдэглэл"
+            textAlignVertical="top"
+          />
         </>
       ) : null}
     </View>

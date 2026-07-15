@@ -51,10 +51,14 @@ async function fetchProductById(id: string): Promise<ProductWithCategory> {
   return data as ProductWithCategory;
 }
 
-export function useProductQuery(productId: string) {
+export function useProductQuery(
+  productId: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: productKeys.detail(productId),
     queryFn: () => fetchProductById(productId),
-    enabled: productId.trim().length > 0,
+    enabled:
+      (options?.enabled ?? true) && productId.trim().length > 0,
   });
 }

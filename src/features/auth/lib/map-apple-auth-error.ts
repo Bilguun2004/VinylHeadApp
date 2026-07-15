@@ -2,7 +2,7 @@ const MESSAGES = {
   providerDisabled:
     'Apple нэвтрэлт Supabase дээр идэвхжээгүй байна. npm run apple:apply ажиллуулна уу.',
   invalidClient:
-    'Apple Client ID тохиргоо буруу байна. Bundle ID (com.bilguun88.vinylheadapp) болон Expo Go (host.exp.Exponent) Supabase Apple provider-д бүртгэгдсэн эсэхийг шалгана уу.',
+    'Apple Client ID тохиргоо буруу байна. Bundle ID (com.vinylhead.app) болон Expo Go (host.exp.Exponent) Supabase Apple provider-д бүртгэгдсэн эсэхийг шалгана уу.',
   generic: 'Apple-ээр нэвтэрч чадсангүй. Дахин оролдоно уу.',
 };
 

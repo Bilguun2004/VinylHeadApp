@@ -4,6 +4,7 @@ ALTER TABLE public.product_reviews
   ADD COLUMN IF NOT EXISTS author_avatar_url TEXT;
 
 -- Allow reading avatar_url (and name) for users who have posted reviews.
+DROP POLICY IF EXISTS profiles_select_review_authors ON public.profiles;
 CREATE POLICY profiles_select_review_authors
   ON public.profiles FOR SELECT
   USING (

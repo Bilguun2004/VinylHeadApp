@@ -103,7 +103,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           l.giftOptionId === (gift?.optionId ?? null) &&
           l.productOptionId === optionId &&
           l.laserEnabled === (laser != null) &&
-          (laser == null || l.laserImageUri === laser.imageUri),
+          (laser == null ||
+            (l.laserImageUri === laser.imageUri &&
+              l.laserPrintText === laser.printText &&
+              l.laserPrintFont === laser.printFont &&
+              l.laserPrintNote === laser.note)),
       );
       if (existingWithOption) {
         return prev.map((l) =>

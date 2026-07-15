@@ -36,6 +36,7 @@ import {
 import { readProductOptionsConfig } from '../lib/product-options';
 import { ProductImageCarousel } from '../components/product-image-carousel';
 import {
+  EMPTY_LASER_PRINT_SELECTION,
   ProductLaserPrintCard,
   type LaserPrintSelection,
 } from '../components/product-laser-print-card';
@@ -46,7 +47,7 @@ import { navigateToHomeTab } from '../../home/lib/navigate-to-home-tab';
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1560507074-b9eb43a0c9a4?auto=format&fit=crop&w=1200&q=80';
 
-const DEFAULT_LASER_EXTRA = 25_000;
+const DEFAULT_LASER_EXTRA = 0;
 
 type ProductSpecs = {
   speed?: string;
@@ -126,10 +127,9 @@ export function ProductScreen() {
   const [optionSelection, setOptionSelection] = useState<ProductOptionSelection>({
     optionId: null,
   });
-  const [laserSelection, setLaserSelection] = useState<LaserPrintSelection>({
-    enabled: false,
-    imageUri: null,
-  });
+  const [laserSelection, setLaserSelection] = useState<LaserPrintSelection>(
+    EMPTY_LASER_PRINT_SELECTION,
+  );
   const hydratedFromCartRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -155,6 +155,9 @@ export function ProductScreen() {
     setLaserSelection({
       enabled: editingCartLine.laserEnabled,
       imageUri: editingCartLine.laserImageUri,
+      printText: editingCartLine.laserPrintText,
+      printFont: editingCartLine.laserPrintFont,
+      note: editingCartLine.laserPrintNote,
     });
     hydratedFromCartRef.current = editingCartLine.lineId;
   }, [editingCartLine, product]);
@@ -263,6 +266,9 @@ export function ProductScreen() {
           ? {
               extra: laserExtraFromSpecs(product.specs),
               imageUri: laserSelection.imageUri,
+              printText: laserSelection.printText,
+              printFont: laserSelection.printFont,
+              note: laserSelection.note,
             }
           : null,
     };

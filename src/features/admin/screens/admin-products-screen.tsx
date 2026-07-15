@@ -181,6 +181,8 @@ export function AdminProductsScreen() {
 
                   onPress: () =>
                     deleteMutation.mutate(product.id, {
+                      onSuccess: () =>
+                        Alert.alert('Амжилттай', 'Бүтээгдэхүүн устгагдлаа.'),
                       onError: (err) =>
                         Alert.alert(
                           'Устгаж чадсангүй',

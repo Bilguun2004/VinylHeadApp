@@ -35,6 +35,7 @@ import {
   type ProductImageSlot,
   useCreateProductMutation,
 } from '../api/use-create-product-mutation';
+import { useDeleteProductMutation } from '../api/use-delete-product-mutation';
 import { useUpdateProductMutation } from '../api/use-update-product-mutation';
 import { readGalleryUrlsFromSpecs } from '../lib/product-specs-gallery';
 import { readGiftWrapFromSpecs } from '../lib/product-specs-gift-wrap';
@@ -93,10 +94,12 @@ export function AdminAddProductScreen() {
 
   const categoriesQuery = useCategoriesQuery();
   const categoryTreeQuery = useAdminCategoryTreeQuery();
-  const productQuery = useProductQuery(productId);
-
   const createMutation = useCreateProductMutation();
   const updateMutation = useUpdateProductMutation();
+  const deleteMutation = useDeleteProductMutation();
+  const productQuery = useProductQuery(productId, {
+    enabled: !deleteMutation.isPending && !deleteMutation.isSuccess,
+  });
 
   const isEdit = productId.trim().length > 0;
   const product = productQuery.data;
@@ -167,7 +170,38 @@ export function AdminAddProductScreen() {
   const busy =
     createMutation.isPending ||
     updateMutation.isPending ||
+    deleteMutation.isPending ||
     sessionQuery.isPending;
+
+  const onDeleteProduct = () => {
+    if (!isEdit || !product) return;
+
+    Alert.alert(
+      'Устгах уу?',
+      'Энэ бүтээгдэхүүн болон түүний зураг, сонголтуудыг бүр мөсөн устгах болно.',
+      [
+        { text: 'Цуцлах', style: 'cancel' },
+        {
+          text: 'Устгах',
+          style: 'destructive',
+          onPress: () =>
+            deleteMutation.mutate(productId, {
+              onSuccess: () =>
+                Alert.alert('Амжилттай', 'Бүтээгдэхүүн устгагдлаа.', [
+                  { text: 'OK', onPress: () => router.back() },
+                ]),
+              onError: (err) =>
+                Alert.alert(
+                  'Устгаж чадсангүй',
+                  err instanceof Error
+                    ? err.message
+                    : 'Бүтээгдэхүүнийг устгахад алдаа гарлаа. Дахин оролдоно уу.',
+                ),
+            }),
+        },
+      ],
+    );
+  };
 
   const pickImages = async () => {
     if (images.length >= MAX_PRODUCT_IMAGES) {
@@ -612,46 +646,52 @@ export function AdminAddProductScreen() {
             slotUri={slotDisplayUri}
           />
 
-          <View className="mb-4 flex-row items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm">
-            <View className="flex-row items-center pr-3">
+          <View className="mb-4 flex-row items-center justify-between overflow-hidden rounded-2xl bg-white px-4 py-4">
+            <View className="min-w-0 flex-1 flex-row items-center pr-3">
               <Package size={18} color="#0A0A0A" />
-              <Text className="ml-3 flex-1 text-sm text-vinyl-black">
+              <Text className="ml-3 shrink text-sm text-vinyl-black">
                 Боломжтой
               </Text>
             </View>
-            <Switch
-              value={available}
-              onValueChange={setAvailable}
-              accessibilityLabel="Боломжтой"
-            />
+            <View className="shrink-0">
+              <Switch
+                value={available}
+                onValueChange={setAvailable}
+                accessibilityLabel="Боломжтой"
+              />
+            </View>
           </View>
 
-          <View className="mb-4 flex-row items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm">
-            <View className="flex-row items-center pr-3">
+          <View className="mb-4 flex-row items-center justify-between overflow-hidden rounded-2xl bg-white px-4 py-4">
+            <View className="min-w-0 flex-1 flex-row items-center pr-3">
               <Star size={18} color="#0A0A0A" />
-              <Text className="ml-3 flex-1 text-sm text-vinyl-black">
+              <Text className="ml-3 shrink text-sm text-vinyl-black">
                 Онцлох
               </Text>
             </View>
-            <Switch
-              value={isFeatured}
-              onValueChange={setIsFeatured}
-              accessibilityLabel="Онцлох"
-            />
+            <View className="shrink-0">
+              <Switch
+                value={isFeatured}
+                onValueChange={setIsFeatured}
+                accessibilityLabel="Онцлох"
+              />
+            </View>
           </View>
 
-          <View className="mb-6 flex-row items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm">
-            <View className="flex-row items-center pr-3">
+          <View className="mb-6 flex-row items-center justify-between overflow-hidden rounded-2xl bg-white px-4 py-4">
+            <View className="min-w-0 flex-1 flex-row items-center pr-3">
               <Printer size={18} color="#0A0A0A" />
-              <Text className="ml-3 flex-1 text-sm text-vinyl-black">
+              <Text className="ml-3 shrink text-sm text-vinyl-black">
                 Лазер хэвлэл идэвхжүүлэх
               </Text>
             </View>
-            <Switch
-              value={laserEnabled}
-              onValueChange={setLaserEnabled}
-              accessibilityLabel="Лазер хэвлэл идэвхжүүлэх"
-            />
+            <View className="shrink-0">
+              <Switch
+                value={laserEnabled}
+                onValueChange={setLaserEnabled}
+                accessibilityLabel="Лазер хэвлэл идэвхжүүлэх"
+              />
+            </View>
           </View>
 
           <View className="flex-row gap-3">
@@ -674,7 +714,7 @@ export function AdminAddProductScreen() {
               disabled={busy}
               className="h-14 flex-1 items-center justify-center rounded-2xl bg-vinyl-black"
             >
-              {busy ? (
+              {busy && !deleteMutation.isPending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text className="text-base font-semibold text-vinyl-paper">
@@ -683,6 +723,24 @@ export function AdminAddProductScreen() {
               )}
             </Pressable>
           </View>
+
+          {isEdit ? (
+            <Pressable
+              onPress={onDeleteProduct}
+              accessibilityRole="button"
+              accessibilityLabel="Бүтээгдэхүүн устгах"
+              disabled={busy}
+              className="mt-4 h-14 items-center justify-center rounded-2xl border border-vinyl-sale bg-white"
+            >
+              {deleteMutation.isPending ? (
+                <ActivityIndicator color="#8B1A1A" />
+              ) : (
+                <Text className="text-base font-semibold text-vinyl-sale">
+                  Бүтээгдэхүүн устгах
+                </Text>
+              )}
+            </Pressable>
+          ) : null}
         </ScrollView>
 
         <Modal
