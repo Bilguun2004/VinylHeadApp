@@ -18,11 +18,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppleSignInMutation } from '../api/use-apple-sign-in-mutation';
 import { useBiometricSignInMutation } from '../api/use-biometric-sign-in-mutation';
-import { useFacebookSignInMutation } from '../api/use-facebook-sign-in-mutation';
 import { useSignInMutation } from '../api/use-sign-in-mutation';
 import { AppleSignInButton } from '../components/apple-sign-in-button';
 import { BiometricLoginIcon } from '../components/biometric-login-icon';
-import { FacebookLogo } from '../components/facebook-logo';
 import { PrivacyPolicyLink } from '../../legal/components/privacy-policy-link';
 import { mapAppleAuthError } from '../lib/map-apple-auth-error';
 import {
@@ -38,6 +36,9 @@ import {
 // Flip to true when biometric login is ready to ship.
 const BIOMETRIC_LOGIN_ENABLED = false;
 
+// Flip to true when Facebook OAuth is configured and ready to ship.
+const FACEBOOK_LOGIN_ENABLED = false;
+
 // TODO(i18n): move these strings into a shared message map once we wire
 // up i18n. Hard-coding Mongolian here matches the current login mockup.
 const MESSAGES = {
@@ -48,7 +49,6 @@ const MESSAGES = {
     'Хэт олон удаа оролдлоо. Хэсэг хүлээгээд дахин оролдоно уу.',
   network:
     'Сүлжээний алдаа. Интернэт холболтоо шалгаад дахин оролдоно уу.',
-  facebookFailed: 'Facebook-ээр нэвтэрч чадсангүй. Дахин оролдоно уу.',
   appleFailed: 'Apple-ээр нэвтэрч чадсангүй. Дахин оролдоно уу.',
   generic: 'Алдаа гарлаа. Дахин оролдоно уу.',
 };
@@ -102,7 +102,6 @@ export function LoginScreen() {
 
   const signInMutation = useSignInMutation();
   const appleMutation = useAppleSignInMutation();
-  const facebookMutation = useFacebookSignInMutation();
   const biometricMutation = useBiometricSignInMutation();
   const [showAppleButton, setShowAppleButton] = useState(false);
   const [showBiometricButton, setShowBiometricButton] = useState(false);
@@ -151,7 +150,6 @@ export function LoginScreen() {
   const isBusy =
     signInMutation.isPending ||
     appleMutation.isPending ||
-    facebookMutation.isPending ||
     biometricMutation.isPending;
   const canSubmit =
     email.trim().length > 0 && password.length > 0 && !isBusy;
@@ -161,9 +159,8 @@ export function LoginScreen() {
     if (appleMutation.error) {
       return mapAppleAuthError(appleMutation.error);
     }
-    if (facebookMutation.error) return mapAuthError(facebookMutation.error);
     return null;
-  }, [signInMutation.error, appleMutation.error, facebookMutation.error]);
+  }, [signInMutation.error, appleMutation.error]);
 
   const maybeOfferBiometric = async (session: Session, signedInEmail: string) => {
     if (!BIOMETRIC_LOGIN_ENABLED) {
@@ -205,11 +202,6 @@ export function LoginScreen() {
   const handleApple = () => {
     if (isBusy) return;
     appleMutation.mutate();
-  };
-
-  const handleFacebook = () => {
-    if (isBusy) return;
-    facebookMutation.mutate();
   };
 
   const handleBiometricSignIn = () => {
@@ -377,11 +369,13 @@ export function LoginScreen() {
             ) : null}
           </View>
 
-          <View className="mb-6 flex-row items-center">
-            <View className="h-px flex-1 bg-[#E5E5E5]" />
-            <Text className="mx-3 text-xs text-[#757575]">эсвэл</Text>
-            <View className="h-px flex-1 bg-[#E5E5E5]" />
-          </View>
+          {showAppleButton || FACEBOOK_LOGIN_ENABLED ? (
+            <View className="mb-6 flex-row items-center">
+              <View className="h-px flex-1 bg-[#E5E5E5]" />
+              <Text className="mx-3 text-xs text-[#757575]">эсвэл</Text>
+              <View className="h-px flex-1 bg-[#E5E5E5]" />
+            </View>
+          ) : null}
 
           {showAppleButton ? (
             <View className="mb-3">
@@ -392,31 +386,6 @@ export function LoginScreen() {
               />
             </View>
           ) : null}
-
-          <Pressable
-            onPress={handleFacebook}
-            disabled={isBusy}
-            accessibilityRole="button"
-            accessibilityLabel="Facebook-ээр нэвтрэх"
-            accessibilityState={{
-              disabled: isBusy,
-              busy: facebookMutation.isPending,
-            }}
-            className={`h-16 flex-row items-center justify-center rounded-xl border border-[#E5E5E5] bg-white ${
-              isBusy ? 'opacity-70' : ''
-            }`}
-          >
-            {facebookMutation.isPending ? (
-              <ActivityIndicator color="#1877F2" />
-            ) : (
-              <>
-                <FacebookLogo size={20} color="#1877F2" />
-                <Text className="ml-2 text-base font-bold text-vinyl-black">
-                  Facebook-ээр нэвтрэх
-                </Text>
-              </>
-            )}
-          </Pressable>
 
           <View className="mt-8 flex-row items-center justify-center">
             <Text className="text-sm text-vinyl-black">Бүртгэлгүй юу? </Text>

@@ -22,10 +22,23 @@
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://yqcycatdzsilereqgjjo.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "sb_publishable_d332fP6Xl7B0ufjLgx6VfA_HRaeNVo9"
+      },
       "channel": "production"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "bilguun8689@gmail.com",
+        "ascAppId": "6785927153",
+        "appleTeamId": "3Q39WB845X"
+      }
+    }
   }
 }

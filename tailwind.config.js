@@ -22,6 +22,7 @@ module.exports = {
         'vinyl-canvas': '#F9F7F7',
         'vinyl-surface': '#F8F8F8',
         'vinyl-sale': '#8B1A1A',
+        'vinyl-confirmed': '#16A34A',
       },
       fontFamily: {
         serif: ['Georgia', 'Times New Roman', 'serif'],

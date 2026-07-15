@@ -1,5 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
+import { useCallback } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,13 @@ export function CustomerOrdersScreen() {
   const sessionQuery = useAuthSessionQuery();
   const userId = sessionQuery.data?.user.id;
   const ordersQuery = useCustomerOrdersQuery(userId);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      void ordersQuery.refetch();
+    }, [userId, ordersQuery.refetch]),
+  );
 
   const onOpenOrder = (order: AdminOrderWithDetails) => {
     router.push({

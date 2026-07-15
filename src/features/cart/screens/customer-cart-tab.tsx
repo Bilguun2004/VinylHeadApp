@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ import {
 import { useCart } from '../context/cart-context';
 import { cartSubtotal } from '../lib/cart-pricing';
 import { DELIVERY_CITIES, districtsForCity } from '../lib/mongolia-locations';
+
 const EMPTY_DELIVERY: DeliveryFormValues = {
   fullName: '',
   phone: '',
@@ -52,7 +54,7 @@ function CheckoutHeader({ onBack }: { onBack: () => void }) {
           resizeMode="contain"
           accessibilityLabel="VinylHead"
         />
-        <Text className="ml-2 font-serif text-base text-vinyl-black">
+        <Text className="ml-2 font-normal text-base text-vinyl-black">
           Төлбөр тооцоо
         </Text>
       </View>
@@ -74,7 +76,9 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
   const createOrderMutation = useCreateOrderMutation();
 
   const [delivery, setDelivery] = useState<DeliveryFormValues>(EMPTY_DELIVERY);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>('qpay');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>(
+    null,
+  );
 
   useEffect(() => {
     const profile = profileQuery.data;
@@ -105,12 +109,29 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
       Alert.alert('Алдаа', 'Нэр, утас, хаягийг бөглөнө үү.');
       return;
     }
+    if (!paymentMethod) {
+      Alert.alert('Алдаа', 'Төлбөрийн хэрэгсэлээ сонгоно уу.');
+      return;
+    }
 
     createOrderMutation.mutate(
       { userId, lines, delivery, paymentMethod },
       {
-        onSuccess: () => {
+        onSuccess: async (result) => {
           clearCart();
+          if (result.followUpLink) {
+            try {
+              await WebBrowser.openBrowserAsync(result.followUpLink);
+            } catch {
+              // Still tell the user the order was created even if the browser fails.
+            }
+            Alert.alert(
+              'Төлбөр',
+              'QPay төлбөрөө гүйцээнэ үү. Төлбөр амжилттай болсны дараа захиалга баталгаажна.',
+              [{ text: 'OK', onPress: onBackToShop }],
+            );
+            return;
+          }
           Alert.alert('Амжилттай', 'Таны захиалга хүлээн авлаа.', [
             { text: 'OK', onPress: onBackToShop },
           ]);
@@ -137,7 +158,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
       <View className="flex-1 bg-vinyl-canvas">
         <CheckoutHeader onBack={onBackToShop} />
         <View className="flex-1 items-center justify-center px-6 pb-24">
-          <Text className="font-serif text-xl text-vinyl-black">Сагс хоосон</Text>
+          <Text className="font-normal text-xl text-vinyl-black">Сагс хоосон</Text>
           <Text className="mt-2 text-center text-sm text-vinyl-muted">
             Бүтээгдэхүүн сонгоод сагсандаа нэмнэ үү.
           </Text>
@@ -168,7 +189,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
       >
         <CheckoutHeader onBack={onBackToShop} />
 
-        <Text className="mt-6 px-5 font-serif text-2xl text-vinyl-black">
+        <Text className="mt-6 px-5 font-normal text-2xl text-vinyl-black">
           Таны захиалга
         </Text>
 
@@ -183,7 +204,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
           ))}
         </View>
 
-        <Text className="mt-8 px-5 font-serif text-2xl text-vinyl-black">
+        <Text className="mt-8 px-5 font-normal text-2xl text-vinyl-black">
           Хүргэлтийн мэдээлэл
         </Text>
         <View className="mx-5 mt-4">
@@ -207,10 +228,12 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
       <View className="border-t border-vinyl-divider/50 bg-vinyl-canvas px-5 pb-2 pt-3">
         <Pressable
           onPress={placeOrder}
-          disabled={busy}
+          disabled={busy || !paymentMethod}
           accessibilityRole="button"
           accessibilityLabel="Захиалах"
-          className="h-14 flex-row items-center justify-center rounded-2xl bg-vinyl-black"
+          className={`h-14 flex-row items-center justify-center rounded-2xl ${
+            paymentMethod ? 'bg-vinyl-black' : 'bg-vinyl-muted'
+          }`}
         >
           {busy ? (
             <ActivityIndicator color="#FFFFFF" />

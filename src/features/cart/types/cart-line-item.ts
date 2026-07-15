@@ -1,3 +1,5 @@
+import type { InstagramStoryFontId } from '../../products/lib/instagram-story-fonts';
+
 export type CartLineItem = {
   lineId: string;
   productId: string;
@@ -15,6 +17,9 @@ export type CartLineItem = {
   laserEnabled: boolean;
   laserExtra: number;
   laserImageUri: string | null;
+  laserPrintText: string;
+  laserPrintFont: InstagramStoryFontId;
+  laserPrintNote: string;
 };
 
 export type CartGiftSelection = {
@@ -27,6 +32,9 @@ export type CartGiftSelection = {
 export type CartLaserSelection = {
   extra: number;
   imageUri: string | null;
+  printText: string;
+  printFont: InstagramStoryFontId;
+  note: string;
 };
 
 export type CartProductOptionSelection = {

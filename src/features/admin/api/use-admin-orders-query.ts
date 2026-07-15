@@ -51,6 +51,7 @@ const orderSelect = `
   order_number,
   status,
   payment_method,
+  payment_status,
   subtotal,
   delivery_fee,
   gift_wrap_total,
@@ -67,6 +68,9 @@ const orderSelect = `
     unit_price,
     gift_option_id,
     laser_print_image_url,
+    laser_print_text,
+    laser_print_font,
+    laser_print_note,
     created_at,
     products ( id, title, artist, image_url, description ),
     gift_options!order_items_gift_option_id_fkey (

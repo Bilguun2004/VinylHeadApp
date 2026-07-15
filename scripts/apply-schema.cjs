@@ -251,6 +251,10 @@ async function main() {
             console.log(`  (skipped — already exists: ${err.message})`);
             continue;
           }
+          if (err?.code === '42710') {
+            console.log(`  (skipped — already exists: ${err.message})`);
+            continue;
+          }
           throw err;
         }
       }

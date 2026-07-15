@@ -8,35 +8,23 @@ import {
   type AdminOrderWithDetails,
 } from '../../admin/api/use-admin-orders-query';
 import {
-  normalizeOrderStatus,
-  statusLabelMn,
+  displayOrderStatusKind,
+  orderDisplayLabelMn,
 } from '../../admin/lib/order-status';
+import { PaymentMethodMark } from './payment-method-mark';
 
 const FALLBACK_PRODUCT_IMAGE =
   'https://images.unsplash.com/photo-1560507074-b9eb43a0c9a4?auto=format&fit=crop&w=400&q=80';
 
-function PaymentMethodMark({ method }: { method: string | null }) {
-  const m = method?.trim().toLowerCase() ?? '';
-  if (m === 'qpay') {
-    return (
-      <View className="h-8 w-8 items-center justify-center rounded-md bg-[#2B6BE6]">
-        <Text className="text-sm font-bold text-white">Q</Text>
-      </View>
-    );
-  }
-  if (m === 'storepay') {
-    return (
-      <View className="h-8 items-center justify-center rounded-md bg-vinyl-black px-1.5">
-        <Text className="text-[9px] font-bold lowercase text-white">storepay</Text>
-      </View>
-    );
-  }
-  return null;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const kind = normalizeOrderStatus(status);
-  const label = statusLabelMn(status);
+function StatusBadge({
+  status,
+  paymentStatus,
+}: {
+  status: string;
+  paymentStatus?: string | null;
+}) {
+  const kind = displayOrderStatusKind(status, paymentStatus);
+  const label = orderDisplayLabelMn(status, paymentStatus);
 
   if (kind === 'delivered') {
     return (
@@ -48,7 +36,7 @@ function StatusBadge({ status }: { status: string }) {
 
   if (kind === 'confirmed') {
     return (
-      <View className="rounded-full bg-vinyl-black px-3 py-1">
+      <View className="rounded-full bg-vinyl-confirmed px-3 py-1">
         <Text className="text-xs font-semibold text-vinyl-paper">{label}</Text>
       </View>
     );
@@ -77,7 +65,8 @@ export function OrderCard({
   const item = primaryOrderItem(order);
   const product = item?.products;
   const imageUri = product?.image_url?.trim() || FALLBACK_PRODUCT_IMAGE;
-  const isDelivered = normalizeOrderStatus(order.status) === 'delivered';
+  const isDelivered =
+    displayOrderStatusKind(order.status, order.payment_status) === 'delivered';
   const productTitle = product?.title ?? 'Бүтээгдэхүүн';
   const productMeta =
     product?.description?.trim() ||
@@ -95,7 +84,10 @@ export function OrderCard({
           <Text className="text-xs font-medium text-vinyl-muted">
             #{order.order_number}
           </Text>
-          <StatusBadge status={order.status} />
+          <StatusBadge
+            status={order.status}
+            paymentStatus={order.payment_status}
+          />
         </View>
 
         <View className="mt-3 flex-row items-start justify-between">
