@@ -15,6 +15,7 @@ import { authSessionKeys } from '../api/use-auth-session-query';
 import { AuthReadyContext } from '../context/auth-ready-context';
 import { usePushRegistration } from '../hooks/use-push-registration';
 import { recoverStaleAuthSession } from '../lib/recover-stale-auth-session';
+import { useGuestMode } from '../context/guest-mode-context';
 
 const PUBLIC_ROUTE_SEGMENTS = new Set([
   'sign-up',
@@ -45,6 +46,7 @@ export function AuthGate({ children }: AuthGateProps) {
   const router = useRouter();
   const segments = useSegments();
   const rootNavigationState = useRootNavigationState();
+  const { guestMode, guestModeReady, exitGuestMode } = useGuestMode();
 
   const userId = session?.user.id ?? null;
 
@@ -79,6 +81,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
       qc.setQueryData(authSessionKeys.session, initialSession);
       setSession(initialSession);
+      if (initialSession) void exitGuestMode();
       setAuthReady(true);
     })();
 
@@ -87,6 +90,7 @@ export function AuthGate({ children }: AuthGateProps) {
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       qc.setQueryData(authSessionKeys.session, nextSession);
       setSession(nextSession);
+      if (nextSession) void exitGuestMode();
       void qc.invalidateQueries({ queryKey: authSessionKeys.session });
       setAuthReady(true);
 
@@ -99,10 +103,10 @@ export function AuthGate({ children }: AuthGateProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [qc, router]);
+  }, [exitGuestMode, qc, router]);
 
   useEffect(() => {
-    if (!authReady || !rootNavigationState?.key) return;
+    if (!authReady || !guestModeReady || !rootNavigationState?.key) return;
 
     const segmentList = segments as string[];
     const onPublicRoute = isPublicRoute(segmentList);
@@ -118,10 +122,21 @@ export function AuthGate({ children }: AuthGateProps) {
       return;
     }
 
-    if (!session && !onPublicRoute) {
+    const guestAccessibleRoute =
+      segmentList[0] === 'home' || segmentList[0] === 'product';
+
+    if (!session && !onPublicRoute && !(guestMode && guestAccessibleRoute)) {
       router.replace('/');
     }
-  }, [authReady, rootNavigationState?.key, segments, router, session]);
+  }, [
+    authReady,
+    guestMode,
+    guestModeReady,
+    rootNavigationState?.key,
+    segments,
+    router,
+    session,
+  ]);
 
   return (
     <AuthReadyContext.Provider value={authReady}>

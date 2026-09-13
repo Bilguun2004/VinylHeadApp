@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AdminProductsScreen } from '../../admin/screens/admin-products-screen';
 import { useAuthSessionQuery } from '../../auth/api/use-auth-session-query';
+import { useGuestMode } from '../../auth/context/guest-mode-context';
 import { useCart } from '../../cart/context/cart-context';
 import { CustomerCartTab } from '../../cart/screens/customer-cart-tab';
 import { CustomerChatScreen } from '../../chat/screens/customer-chat-screen';
@@ -37,6 +38,7 @@ export function HomeScreen() {
   const isAdmin =
     String(sessionQuery.data?.user.app_metadata?.role ?? '') === 'admin';
   const userId = sessionQuery.data?.user.id ?? null;
+  const { guestMode } = useGuestMode();
 
   const [activeTab, setActiveTab] = useState<HomeTab>(
     () => tabFromParam(params.tab) ?? 'shop',
@@ -71,6 +73,12 @@ export function HomeScreen() {
     if (!tab) return;
     setActiveTab(tab);
   }, [params.tab]);
+
+  useEffect(() => {
+    if (guestMode && (activeTab === 'profile' || activeTab === 'chat')) {
+      setActiveTab('shop');
+    }
+  }, [activeTab, guestMode]);
 
   const threadId = threadQuery.data?.id ?? null;
 
@@ -150,6 +158,7 @@ export function HomeScreen() {
               cartCount={itemCount}
               onProfilePress={() => setActiveTab('profile')}
               onCartPress={() => setActiveTab('cart')}
+              showProfile={!guestMode}
             />
             <CustomerShopCatalog
               onProductPress={onOpen}
@@ -164,6 +173,7 @@ export function HomeScreen() {
             cartCount={itemCount}
             onProfilePress={() => setActiveTab('profile')}
             onCartPress={() => setActiveTab('cart')}
+            showProfile={!guestMode}
           />
         ) : activeTab === 'chat' ? (
           <CustomerChatScreen
@@ -184,6 +194,10 @@ export function HomeScreen() {
             onTabChange={setActiveTab}
             cartCount={itemCount}
             chatHasUnread={chatHasUnread}
+            showProfile={!guestMode}
+            showChat={!guestMode}
+            showLogin={guestMode}
+            onLoginPress={() => router.replace('/')}
           />
         )}
       </View>

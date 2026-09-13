@@ -241,35 +241,35 @@ export function ProductScreen() {
     const selectedProductOption =
       productOptionsConfig?.enabled && optionSelection.optionId
         ? productOptionsConfig.options.find(
-            (o) => o.id === optionSelection.optionId,
-          )
+          (o) => o.id === optionSelection.optionId,
+        )
         : null;
 
     return {
       product,
       productOption: selectedProductOption
         ? {
-            optionId: selectedProductOption.id,
-            optionLabel: selectedProductOption.label,
-          }
+          optionId: selectedProductOption.id,
+          optionLabel: selectedProductOption.label,
+        }
         : null,
       gift: giftOption
         ? {
-            optionId: giftOption.id,
-            optionName: giftOption.name,
-            imageUrl: giftOption.imageUrl,
-            extra: giftWrapExtraFromSpecs(product.specs),
-          }
+          optionId: giftOption.id,
+          optionName: giftOption.name,
+          imageUrl: giftOption.imageUrl,
+          extra: giftWrapExtraFromSpecs(product.specs),
+        }
         : null,
       laser:
         showLaser && laserSelection.enabled
           ? {
-              extra: laserExtraFromSpecs(product.specs),
-              imageUri: laserSelection.imageUri,
-              printText: laserSelection.printText,
-              printFont: laserSelection.printFont,
-              note: laserSelection.note,
-            }
+            extra: laserExtraFromSpecs(product.specs),
+            imageUri: laserSelection.imageUri,
+            printText: laserSelection.printText,
+            printFont: laserSelection.printFont,
+            note: laserSelection.note,
+          }
           : null,
     };
   };
@@ -405,9 +405,8 @@ export function ProductScreen() {
 
                 <View className="mt-3 flex-row flex-wrap items-baseline">
                   <Text
-                    className={`text-2xl font-bold ${
-                      pricing.onSale ? 'text-vinyl-sale' : 'text-vinyl-black'
-                    }`}
+                    className={`text-2xl font-bold ${pricing.onSale ? 'text-vinyl-sale' : 'text-vinyl-black'
+                      }`}
                   >
                     {formatMnt(pricing.display)}
                   </Text>
@@ -469,18 +468,16 @@ export function ProductScreen() {
                     : 'Боломжгүй'
                 }
                 accessibilityState={{ disabled: !productAvailable }}
-                className={`h-14 flex-row items-center justify-center rounded-full ${
-                  productAvailable ? 'bg-vinyl-black' : 'bg-vinyl-divider'
-                }`}
+                className={`h-14 flex-row items-center justify-center rounded-full ${productAvailable ? 'bg-vinyl-black' : 'bg-vinyl-divider'
+                  }`}
               >
                 <ShoppingCart
                   size={20}
                   color={productAvailable ? '#FFFFFF' : '#6B6B6B'}
                 />
                 <Text
-                  className={`ml-2 text-base font-semibold ${
-                    productAvailable ? 'text-white' : 'text-vinyl-muted'
-                  }`}
+                  className={`ml-2 text-base font-semibold ${productAvailable ? 'text-white' : 'text-vinyl-muted'
+                    }`}
                 >
                   {productAvailable
                     ? isEditingCartLine

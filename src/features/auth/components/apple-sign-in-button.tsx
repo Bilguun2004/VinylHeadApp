@@ -34,7 +34,7 @@ export function AppleSignInButton({
       ) : (
         <>
           <AppleLogo size={20} color="#1A1A1A" />
-          <Text className="ml-2 text-base font-bold text-vinyl-black">{label}</Text>
+          <Text className="ml-2 font-bold text-vinyl-black">{label}</Text>
         </>
       )}
     </Pressable>

@@ -20,6 +20,8 @@ import { useAppleSignInMutation } from '../api/use-apple-sign-in-mutation';
 import { useBiometricSignInMutation } from '../api/use-biometric-sign-in-mutation';
 import { useSignInMutation } from '../api/use-sign-in-mutation';
 import { AppleSignInButton } from '../components/apple-sign-in-button';
+import { GuestModeButton } from '../components/guest-mode-button';
+import { useGuestMode } from '../context/guest-mode-context';
 import { BiometricLoginIcon } from '../components/biometric-login-icon';
 import { PrivacyPolicyLink } from '../../legal/components/privacy-policy-link';
 import { mapAppleAuthError } from '../lib/map-apple-auth-error';
@@ -97,6 +99,7 @@ function promptEnableBiometric(
 
 export function LoginScreen() {
   const router = useRouter();
+  const { enterGuestMode } = useGuestMode();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -202,6 +205,11 @@ export function LoginScreen() {
   const handleApple = () => {
     if (isBusy) return;
     appleMutation.mutate();
+  };
+
+  const handleGuestMode = () => {
+    if (isBusy) return;
+    void enterGuestMode().then(() => router.replace('/home'));
   };
 
   const handleBiometricSignIn = () => {
@@ -331,9 +339,8 @@ export function LoginScreen() {
                 disabled: !canSubmit,
                 busy: signInMutation.isPending,
               }}
-              className={`h-14 flex-1 flex-row items-center justify-center rounded-xl ${
-                canSubmit ? 'bg-vinyl-black' : 'bg-vinyl-black/50'
-              }`}
+              className={`h-14 flex-1 flex-row items-center justify-center rounded-xl ${canSubmit ? 'bg-vinyl-black' : 'bg-vinyl-black/50'
+                }`}
             >
               {signInMutation.isPending ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -356,9 +363,8 @@ export function LoginScreen() {
                   disabled: isBusy,
                   busy: biometricMutation.isPending,
                 }}
-                className={`h-14 w-14 items-center justify-center rounded-xl border border-[#E5E5E5] bg-white ${
-                  isBusy ? 'opacity-70' : ''
-                }`}
+                className={`h-14 w-14 items-center justify-center rounded-xl border border-[#E5E5E5] bg-white ${isBusy ? 'opacity-70' : ''
+                  }`}
               >
                 {biometricMutation.isPending ? (
                   <ActivityIndicator color="#1A1A1A" />
@@ -386,6 +392,14 @@ export function LoginScreen() {
               />
             </View>
           ) : null}
+
+          <View className="mb-3">
+            <GuestModeButton
+              onPress={handleGuestMode}
+              disabled={isBusy}
+              busy={appleMutation.isPending}
+            />
+          </View>
 
           <View className="mt-8 flex-row items-center justify-center">
             <Text className="text-sm text-vinyl-black">Бүртгэлгүй юу? </Text>

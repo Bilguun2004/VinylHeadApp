@@ -19,6 +19,7 @@ type CustomerSearchTabProps = {
   cartCount: number;
   onProfilePress: () => void;
   onCartPress: () => void;
+  showProfile?: boolean;
 };
 
 function SearchEmptyState() {
@@ -43,6 +44,7 @@ export function CustomerSearchTab({
   cartCount,
   onProfilePress,
   onCartPress,
+  showProfile = true,
 }: CustomerSearchTabProps) {
   const { width: screenWidth } = useWindowDimensions();
   const [search, setSearch] = useState('');
@@ -74,6 +76,7 @@ export function CustomerSearchTab({
         cartCount={cartCount}
         onProfilePress={onProfilePress}
         onCartPress={onCartPress}
+        showProfile={showProfile}
       />
 
       <View className="mt-2 px-6 pb-3 pt-2">

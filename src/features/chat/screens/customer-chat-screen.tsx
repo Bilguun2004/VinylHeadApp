@@ -194,62 +194,62 @@ export function CustomerChatScreen({
   return (
     <View className="flex-1 bg-vinyl-paper">
       <View className="flex-1">
-          <CustomerHomeHeader
-            avatarUrl={avatarUrl}
-            cartCount={cartCount}
-            onProfilePress={onProfilePress}
-            onCartPress={onCartPress}
-          />
+        <CustomerHomeHeader
+          avatarUrl={avatarUrl}
+          cartCount={cartCount}
+          onProfilePress={onProfilePress}
+          onCartPress={onCartPress}
+        />
 
-          <View className="mt-2 px-6 pb-3">
-            <Text className="text-2xl font-extrabold text-vinyl-black">Тусламж</Text>
-            <Text className="mt-1 text-sm text-vinyl-muted">
-              Админтай чатлаарай. Зураг илгээж болно.
+        <View className="mt-2 px-6 pb-3">
+          <Text className="text-2xl font-extrabold text-vinyl-black">Тусламж</Text>
+          <Text className="mt-1 text-sm text-vinyl-muted">
+            Админтай чатлаарай. Зураг илгээж болно.
+          </Text>
+        </View>
+
+        {messagesQuery.isPending ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator />
+          </View>
+        ) : messagesQuery.isError ? (
+          <View className="flex-1 items-center justify-center px-6">
+            <Text className="text-center text-sm text-vinyl-muted">
+              Мессежүүдийг ачаалж чадсангүй.
             </Text>
           </View>
+        ) : (
+          <View className="flex-1">
+            <ChatMessageList
+              listRef={listRef}
+              messages={messagesQuery.data ?? []}
+              currentUserId={userId}
+              useBrandAvatar
+              scrollToBottomKey={threadId}
+              onScrollBeginDrag={() => {
+                if (threadId) {
+                  markReadMutation.mutate({
+                    threadId,
+                    role: 'user',
+                    userIdForInvalidation: userId,
+                  });
+                }
+              }}
+            />
+          </View>
+        )}
 
-          {messagesQuery.isPending ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator />
-            </View>
-          ) : messagesQuery.isError ? (
-            <View className="flex-1 items-center justify-center px-6">
-              <Text className="text-center text-sm text-vinyl-muted">
-                Мессежүүдийг ачаалж чадсангүй.
-              </Text>
-            </View>
-          ) : (
-            <View className="flex-1">
-              <ChatMessageList
-                listRef={listRef}
-                messages={messagesQuery.data ?? []}
-                currentUserId={userId}
-                useBrandAvatar
-                scrollToBottomKey={threadId}
-                onScrollBeginDrag={() => {
-                  if (threadId) {
-                    markReadMutation.mutate({
-                      threadId,
-                      role: 'user',
-                      userIdForInvalidation: userId,
-                    });
-                  }
-                }}
-              />
-            </View>
-          )}
-
-          <ChatComposer
-            text={text}
-            onChangeText={setText}
-            onSend={onSend}
-            onPickImage={() => void pickImage()}
-            canSend={canSend}
-            isSending={sendMutation.isPending}
-            localImageUri={localImageUri}
-            onClearImage={() => setLocalImageUri(null)}
-            style={keyboardHeight > 0 ? { paddingBottom: keyboardHeight + 12 } : undefined}
-          />
+        <ChatComposer
+          text={text}
+          onChangeText={setText}
+          onSend={onSend}
+          onPickImage={() => void pickImage()}
+          canSend={canSend}
+          isSending={sendMutation.isPending}
+          localImageUri={localImageUri}
+          onClearImage={() => setLocalImageUri(null)}
+          style={keyboardHeight > 0 ? { paddingBottom: keyboardHeight + 12 } : undefined}
+        />
       </View>
     </View>
   );

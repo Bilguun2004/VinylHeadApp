@@ -8,6 +8,7 @@ type CustomerHomeHeaderProps = {
   cartCount: number;
   onProfilePress: () => void;
   onCartPress: () => void;
+  showProfile?: boolean;
 };
 
 export function CustomerHomeHeader({
@@ -15,15 +16,20 @@ export function CustomerHomeHeader({
   cartCount,
   onProfilePress,
   onCartPress,
+  showProfile = true,
 }: CustomerHomeHeaderProps) {
   return (
     <View className="px-6 pt-2">
       <View className="flex-row items-center justify-between">
-        <ProfileAvatar
-          avatarUrl={avatarUrl}
-          onPress={onProfilePress}
-          accessibilityLabel="Профайл"
-        />
+        {showProfile ? (
+          <ProfileAvatar
+            avatarUrl={avatarUrl}
+            onPress={onProfilePress}
+            accessibilityLabel="Профайл"
+          />
+        ) : (
+          <View className="h-10 w-10" />
+        )}
 
         <Image
           source={require('../../../../assets/logo.png')}

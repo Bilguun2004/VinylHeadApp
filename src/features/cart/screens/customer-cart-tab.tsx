@@ -1,10 +1,12 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -63,11 +65,65 @@ function CheckoutHeader({ onBack }: { onBack: () => void }) {
   );
 }
 
+function LoginRequiredModal({
+  visible,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center bg-black/40 px-6">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Хаах"
+          onPress={onClose}
+          className="absolute inset-0"
+        />
+        <View
+          className="rounded-2xl bg-white px-5 py-5"
+          accessibilityViewIsModal
+        >
+          <Text className="text-center text-base font-semibold text-vinyl-black">
+            Нэвтрэлт шаардлагатай
+          </Text>
+          <Text className="mt-2 text-center text-sm leading-5 text-vinyl-muted">
+            Захиалга өгөхийн тулд нэвтрэх шаардлагатай. Нэвтрэх үү?
+          </Text>
+          <View className="mt-5 flex-row gap-3">
+            <Pressable
+              onPress={onClose}
+              className="h-12 flex-1 items-center justify-center rounded-xl border border-vinyl-black bg-white"
+            >
+              <Text className="text-sm font-semibold text-vinyl-black">Үгүй</Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              className="h-12 flex-1 items-center justify-center rounded-xl bg-vinyl-black"
+            >
+              <Text className="text-sm font-semibold text-vinyl-paper">Тийм</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 type CustomerCartTabProps = {
   onBackToShop: () => void;
 };
 
 export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
+  const router = useRouter();
   const { lines, hydrated, clearCart, removeLine, setLineQuantity } = useCart();
 
   const sessionQuery = useAuthSessionQuery();
@@ -79,6 +135,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>(
     null,
   );
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
 
   useEffect(() => {
     const profile = profileQuery.data;
@@ -97,7 +154,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
 
   const placeOrder = () => {
     if (!userId) {
-      Alert.alert('Алдаа', 'Захиалахын тулд нэвтэрнэ үү.');
+      setLoginModalVisible(true);
       return;
     }
     if (lines.length === 0) return;
@@ -155,7 +212,7 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
 
   if (lines.length === 0) {
     return (
-      <View className="flex-1 bg-vinyl-canvas">
+      <View className="flex-1">
         <CheckoutHeader onBack={onBackToShop} />
         <View className="flex-1 items-center justify-center px-6 pb-24">
           <Text className="font-normal text-xl text-vinyl-black">Сагс хоосон</Text>
@@ -181,6 +238,14 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
 
   return (
     <View className="flex-1 bg-vinyl-canvas">
+      <LoginRequiredModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onConfirm={() => {
+          setLoginModalVisible(false);
+          router.replace('/');
+        }}
+      />
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -231,9 +296,8 @@ export function CustomerCartTab({ onBackToShop }: CustomerCartTabProps) {
           disabled={busy || !paymentMethod}
           accessibilityRole="button"
           accessibilityLabel="Захиалах"
-          className={`h-14 flex-row items-center justify-center rounded-2xl ${
-            paymentMethod ? 'bg-vinyl-black' : 'bg-vinyl-muted'
-          }`}
+          className={`h-14 flex-row items-center justify-center rounded-2xl ${paymentMethod ? 'bg-vinyl-black' : 'bg-vinyl-muted'
+            }`}
         >
           {busy ? (
             <ActivityIndicator color="#FFFFFF" />
