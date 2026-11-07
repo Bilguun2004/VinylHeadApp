@@ -7,6 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { ArrowDown, ArrowUp } from 'lucide-react-native';
 
 import { SALE_CATEGORY_ID } from '../../../lib/catalog-seed-ids';
 import {
@@ -20,6 +21,10 @@ import {
 } from '../api/use-products-query';
 import { ALL_SUB_CATEGORY_ID } from '../lib/catalog-constants';
 import { partitionFeaturedProducts } from '../lib/partition-featured-products';
+import {
+  sortProductsByAvailabilityAndPrice,
+  type PriceSortDirection,
+} from '../lib/product-sale';
 import { FeaturedProductCard } from './featured-product-card';
 import { ProductCard } from './product-card';
 
@@ -42,6 +47,7 @@ export function CustomerShopCatalog({
   const [activeSubCategoryId, setActiveSubCategoryId] = useState<string | null>(
     null,
   );
+  const [priceSort, setPriceSort] = useState<PriceSortDirection>('asc');
 
   const navCategoriesQuery = useHomeNavCategoriesQuery({ enabled });
   const saleProductsQuery = useSaleProductsQuery({ enabled });
@@ -125,10 +131,49 @@ export function CustomerShopCatalog({
 
   const featuredCardWidth = screenWidth - horizontalPadding * 2;
 
-  const { featured, regular } = useMemo(
-    () => partitionFeaturedProducts(gridProducts ?? []),
-    [gridProducts],
+  const sortedProducts = useMemo(
+    () => sortProductsByAvailabilityAndPrice(gridProducts ?? [], priceSort),
+    [gridProducts, priceSort],
   );
+
+  const { featured, regular } = useMemo(
+    () => partitionFeaturedProducts(sortedProducts),
+    [sortedProducts],
+  );
+
+  const listHeading = useMemo(() => {
+    if (activeSubCategories.length > 0 && activeSubCategoryId) {
+      const categoryName = activeCategory?.name ?? '';
+      if (activeSubCategoryId === ALL_SUB_CATEGORY_ID) {
+        return {
+          title: categoryName,
+          subtitle: `${categoryName} ангиллын бүх бүтээгдэхүүн`,
+        };
+      }
+      const subName =
+        activeSubCategories.find((s) => s.id === activeSubCategoryId)?.name ??
+        '';
+      return {
+        title: `${subName} ${categoryName}`.trim(),
+        subtitle: `${categoryName} ангиллын бүтээгдэхүүн`,
+      };
+    }
+    if (isSaleCategory) {
+      return {
+        title: activeCategory?.name ?? '',
+        subtitle: 'Хямдралтай бүх бүтээгдэхүүн',
+      };
+    }
+    return null;
+  }, [
+    activeCategory?.name,
+    activeSubCategories,
+    activeSubCategoryId,
+    isSaleCategory,
+  ]);
+
+  const priceSortLabel =
+    priceSort === 'asc' ? 'Үнэ өсөхөөр' : 'Үнэ буурахаар';
 
   const featuredListHeader = useMemo(() => {
     if (featured.length === 0) return null;
@@ -221,62 +266,69 @@ export function CustomerShopCatalog({
         />
 
         {activeSubCategories.length > 0 ? (
-          <>
-            <FlatList
-              data={subNavItems}
-              keyExtractor={(s) => s.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 12 }}
-              ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
-              renderItem={({ item: sub }) => {
-                const isSubActive = sub.id === activeSubCategoryId;
-                return (
-                  <Pressable
-                    onPress={() => setActiveSubCategoryId(sub.id)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isSubActive }}
-                    accessibilityLabel={sub.name}
-                    className={`rounded-full px-4 py-2 ${
-                      isSubActive ? 'bg-vinyl-black' : 'bg-vinyl-surface'
+          <FlatList
+            data={subNavItems}
+            keyExtractor={(s) => s.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 12 }}
+            ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
+            renderItem={({ item: sub }) => {
+              const isSubActive = sub.id === activeSubCategoryId;
+              return (
+                <Pressable
+                  onPress={() => setActiveSubCategoryId(sub.id)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isSubActive }}
+                  accessibilityLabel={sub.name}
+                  className={`rounded-full px-4 py-2 ${
+                    isSubActive ? 'bg-vinyl-black' : 'bg-vinyl-surface'
+                  }`}
+                >
+                  <Text
+                    className={`text-sm font-semibold ${
+                      isSubActive ? 'text-vinyl-paper' : 'text-vinyl-muted'
                     }`}
                   >
-                    <Text
-                      className={`text-sm font-semibold ${
-                        isSubActive ? 'text-vinyl-paper' : 'text-vinyl-muted'
-                      }`}
-                    >
-                      {sub.name}
-                    </Text>
-                  </Pressable>
-                );
-              }}
-            />
-            {activeSubCategoryId ? (
-              <View className="pb-2">
+                    {sub.name}
+                  </Text>
+                </Pressable>
+              );
+            }}
+          />
+        ) : null}
+
+        <View className="flex-row items-start justify-between pb-3">
+          <View className="min-w-0 flex-1 pr-3">
+            {listHeading ? (
+              <>
                 <Text className="text-2xl font-extrabold text-vinyl-black">
-                  {activeSubCategoryId === ALL_SUB_CATEGORY_ID
-                    ? activeCategory?.name ?? ''
-                    : `${activeSubCategories.find((s) => s.id === activeSubCategoryId)?.name ?? ''} ${activeCategory?.name ?? ''}`}
+                  {listHeading.title}
                 </Text>
                 <Text className="mt-1 text-sm text-vinyl-muted">
-                  {activeSubCategoryId === ALL_SUB_CATEGORY_ID
-                    ? `${activeCategory?.name ?? ''} ангиллын бүх бүтээгдэхүүн`
-                    : `${activeCategory?.name ?? ''} ангиллын бүтээгдэхүүн`}
+                  {listHeading.subtitle}
                 </Text>
-              </View>
+              </>
             ) : null}
-          </>
-        ) : isSaleCategory ? (
-          <View className="pb-2">
-            <Text className="text-2xl font-extrabold text-vinyl-black">
-              {activeCategory?.name ?? ''}
-            </Text>
-            <Text className="mt-1 text-sm text-vinyl-muted">
-              Хямдралтай бүх бүтээгдэхүүн
-            </Text>
           </View>
-        ) : null}
+          <Pressable
+            onPress={() =>
+              setPriceSort((current) => (current === 'asc' ? 'desc' : 'asc'))
+            }
+            accessibilityRole="button"
+            accessibilityLabel={`${priceSortLabel} эрэмбэлэгдсэн`}
+            className="mt-1 flex-row items-center rounded-full bg-vinyl-surface px-3 py-2"
+          >
+            {priceSort === 'asc' ? (
+              <ArrowUp size={16} color="#0A0A0A" strokeWidth={2.25} />
+            ) : (
+              <ArrowDown size={16} color="#0A0A0A" strokeWidth={2.25} />
+            )}
+            <Text className="ml-1.5 text-sm font-semibold text-vinyl-black">
+              Үнэ
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {activeCategoryId == null ? (

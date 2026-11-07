@@ -2,6 +2,7 @@ import '../global.css';
 
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Image, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -21,7 +22,16 @@ export default function RootLayout() {
   const { loaded: fontsLoaded } = useInstagramStoryFonts();
 
   if (!fontsLoaded) {
-    return null;
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <Image
+          source={require('../assets/logo.png')}
+          className="h-40 w-40"
+          resizeMode="contain"
+          accessibilityLabel="Пянз толгойт"
+        />
+      </View>
+    );
   }
 
   return (

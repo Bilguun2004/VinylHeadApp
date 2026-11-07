@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '../../../lib/supabase';
+import { sortProductsByAvailabilityAndPrice } from '../lib/product-sale';
 import {
   productKeys,
   productWithCategorySelect,
@@ -21,7 +22,8 @@ async function fetchProductSearch(search: string): Promise<ProductWithCategory[]
   let q = supabase
     .from('products')
     .select(productWithCategorySelect)
-    .order('created_at', { ascending: false });
+    .order('available', { ascending: false })
+    .order('price', { ascending: true });
 
   if (term.length > 0) {
     const p = `%${term}%`;
@@ -30,7 +32,9 @@ async function fetchProductSearch(search: string): Promise<ProductWithCategory[]
 
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as ProductWithCategory[];
+  return sortProductsByAvailabilityAndPrice(
+    (data ?? []) as ProductWithCategory[],
+  );
 }
 
 export function useProductSearchQuery(

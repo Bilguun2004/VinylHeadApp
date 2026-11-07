@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '../../../lib/supabase';
-import { partitionSaleProducts } from '../lib/product-sale';
+import {
+  partitionSaleProducts,
+  sortProductsByAvailabilityAndPrice,
+} from '../lib/product-sale';
 import {
   productKeys,
   productWithCategorySelect,
@@ -15,8 +18,8 @@ async function fetchProductsByCategory(
   let q = supabase
     .from('products')
     .select(productWithCategorySelect)
-    .order('is_featured', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('available', { ascending: false })
+    .order('price', { ascending: true });
 
   if (categoryId) {
     q = q.eq('category_id', categoryId);
@@ -28,7 +31,9 @@ async function fetchProductsByCategory(
   const { data, error } = await q;
   if (error) throw error;
 
-  return (data ?? []) as ProductWithCategory[];
+  return sortProductsByAvailabilityAndPrice(
+    (data ?? []) as ProductWithCategory[],
+  );
 }
 
 export type SaleProductsQueryData = {
@@ -40,12 +45,14 @@ async function fetchSaleProducts(): Promise<SaleProductsQueryData> {
   const { data, error } = await supabase
     .from('products')
     .select(productWithCategorySelect)
-    .order('is_featured', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('available', { ascending: false })
+    .order('price', { ascending: true });
 
   if (error) throw error;
 
-  const rows = (data ?? []) as ProductWithCategory[];
+  const rows = sortProductsByAvailabilityAndPrice(
+    (data ?? []) as ProductWithCategory[],
+  );
   const { products, showTab } = partitionSaleProducts(rows);
 
   return { products, showTab };

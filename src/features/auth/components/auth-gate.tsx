@@ -2,11 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import * as Updates from 'expo-updates';
 
@@ -143,7 +139,12 @@ export function AuthGate({ children }: AuthGateProps) {
       {children}
       {!authReady ? (
         <View style={styles.overlay} accessibilityLabel="Ачаалж байна">
-          <ActivityIndicator size="large" />
+          <Image
+            source={require('../../../../assets/logo.png')}
+            className="h-40 w-40"
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
         </View>
       ) : null}
     </AuthReadyContext.Provider>

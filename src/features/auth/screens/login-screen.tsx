@@ -247,7 +247,7 @@ export function LoginScreen() {
             <View className="mb-4 items-center justify-center rounded-xl bg-white p-3">
               <Image
                 source={require('../../../../assets/logo.png')}
-                className="h-12 w-12"
+                className="h-24 w-24"
                 resizeMode="contain"
                 accessibilityIgnoresInvertColors
               />

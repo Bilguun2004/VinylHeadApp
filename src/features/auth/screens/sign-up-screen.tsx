@@ -161,7 +161,7 @@ export function SignUpScreen() {
         <View className="flex-1 items-center justify-center px-6">
           <Image
             source={require('../../../../assets/logo.png')}
-            className="h-12 w-12"
+            className="h-24 w-24"
             resizeMode="contain"
             accessibilityIgnoresInvertColors
           />
@@ -211,7 +211,7 @@ export function SignUpScreen() {
           <View className="items-center pb-8 pt-2">
             <Image
               source={require('../../../../assets/logo.png')}
-              className="h-12 w-12"
+              className="h-24 w-24"
               resizeMode="contain"
               accessibilityIgnoresInvertColors
             />

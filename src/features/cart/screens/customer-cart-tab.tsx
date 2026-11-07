@@ -52,7 +52,7 @@ function CheckoutHeader({ onBack }: { onBack: () => void }) {
       <View className="flex-1 flex-row items-center justify-center">
         <Image
           source={require('../../../../assets/logo.png')}
-          style={{ width: 24, height: 24 }}
+          className="h-8 w-8"
           resizeMode="contain"
           accessibilityLabel="VinylHead"
         />

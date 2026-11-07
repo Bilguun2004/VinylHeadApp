@@ -33,7 +33,7 @@ export function CustomerHomeHeader({
 
         <Image
           source={require('../../../../assets/logo.png')}
-          style={{ width: 26, height: 26 }}
+          className="h-10 w-10"
           resizeMode="contain"
           accessibilityLabel="VinylHead"
         />
